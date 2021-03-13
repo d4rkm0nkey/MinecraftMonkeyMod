@@ -1,0 +1,139 @@
+{
+	"format_version": "1.12.0",
+	"minecraft:geometry": [
+		{
+			"description": {
+				"identifier": "geometry.unknown",
+				"texture_width": 64,
+				"texture_height": 64,
+				"visible_bounds_width": 5,
+				"visible_bounds_height": 3.5,
+				"visible_bounds_offset": [0, 1.25, 0]
+			},
+			"bones": [
+				{
+					"name": "Root",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "HipBone",
+					"parent": "Root",
+					"pivot": [0, 12, 8],
+					"cubes": [
+						{"origin": [-4, 10, -6], "size": [8, 5, 16], "uv": [16, 18]}
+					]
+				},
+				{
+					"name": "RightLeg",
+					"parent": "HipBone",
+					"pivot": [-3, 11, 8],
+					"rotation": [90, 0, 0],
+					"cubes": [
+						{"origin": [-5, 9.5, 3], "size": [3, 3, 6], "uv": [32, 9]}
+					]
+				},
+				{
+					"name": "RightLowerLeg",
+					"parent": "RightLeg",
+					"pivot": [-3.5, 12, 3],
+					"cubes": [
+						{"origin": [-4.5, 6, 3], "size": [2, 6, 2], "pivot": [-3.5, 12, 3], "rotation": [-90, 0, 0], "uv": [56, 25]}
+					]
+				},
+				{
+					"name": "LeftLeg",
+					"parent": "HipBone",
+					"pivot": [3, 11, 8],
+					"cubes": [
+						{"origin": [2, 9.5, 3], "size": [3, 3, 6], "pivot": [4, 11, 8], "rotation": [90, 0, 0], "uv": [32, 0]}
+					]
+				},
+				{
+					"name": "LeftLowerLegBone",
+					"parent": "LeftLeg",
+					"pivot": [3.5, 6, 7],
+					"cubes": [
+						{"origin": [2.5, 0, 7], "size": [2, 6, 2], "uv": [48, 25]}
+					]
+				},
+				{
+					"name": "RightArm",
+					"parent": "HipBone",
+					"pivot": [-3, 11, -4.5],
+					"cubes": [
+						{"origin": [-5.5, 0, -5.5], "size": [2, 12, 2], "uv": [8, 26]}
+					]
+				},
+				{
+					"name": "LeftArm",
+					"parent": "HipBone",
+					"pivot": [4, 11, -4.5],
+					"cubes": [
+						{"origin": [3.5, 0, -5.5], "size": [2, 12, 2], "uv": [0, 26]}
+					]
+				},
+				{
+					"name": "Tail",
+					"parent": "HipBone",
+					"pivot": [0, 13, 9],
+					"rotation": [90, 0, 0],
+					"cubes": [
+						{"origin": [-1, 7, 8.5], "size": [2, 6, 2], "uv": [56, 0]}
+					]
+				},
+				{
+					"name": "TailBone",
+					"parent": "Tail",
+					"pivot": [0, 7, 8.5],
+					"cubes": [
+						{"origin": [-1, 1, 8.5], "size": [2, 6, 2], "uv": [56, 0]}
+					]
+				},
+				{
+					"name": "TailEndBone",
+					"parent": "TailBone",
+					"pivot": [0, 1, 8.5],
+					"cubes": [
+						{"origin": [-1, -5, 8.5], "size": [2, 6, 2], "uv": [56, 0]}
+					]
+				},
+				{
+					"name": "NeckBone",
+					"parent": "HipBone",
+					"pivot": [0, 13, -4],
+					"rotation": [77.5, 0, 0],
+					"cubes": [
+						{"origin": [-1.5, 10.8035, -6.27669], "size": [3, 5, 3], "pivot": [0, 13.3035, -4.77669], "rotation": [17.5, 0, 0], "uv": [0, 40]}
+					]
+				},
+				{
+					"name": "HeadBone",
+					"parent": "NeckBone",
+					"pivot": [0, 15, -6],
+					"cubes": [
+						{"origin": [-4, 15, -9], "size": [8, 8, 8], "uv": [0, 0]},
+						{"origin": [-3, 15, -11], "size": [6, 4, 2], "uv": [2, 18]}
+					]
+				},
+				{
+					"name": "RightEarBone",
+					"parent": "HeadBone",
+					"pivot": [4, 19, -4],
+					"rotation": [0, -27.5, 10],
+					"cubes": [
+						{"origin": [3.84597, 17.98481, -4.91982], "size": [2, 4, 2], "uv": [22, 22]}
+					]
+				},
+				{
+					"name": "LeftEarBone",
+					"parent": "HeadBone",
+					"pivot": [-4, 19, -4],
+					"rotation": [0, 27.5, -10],
+					"cubes": [
+						{"origin": [-5.84597, 17.98481, -4.91982], "size": [2, 4, 2], "uv": [22, 16]}
+					]
+				}
+			]
+		}
+	]
+}
