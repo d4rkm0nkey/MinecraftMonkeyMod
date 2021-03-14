@@ -1,7 +1,9 @@
 package me.teajay.cheeky.monkeys.common;
 
 import me.teajay.cheeky.monkeys.common.entity.MonkeyEntity;
+import me.teajay.cheeky.monkeys.common.world.MonkeySpawner;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.item.v1.FabricItemSettings;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricEntityTypeBuilder;
@@ -9,9 +11,11 @@ import net.minecraft.entity.EntityDimensions;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnGroup;
 import net.minecraft.entity.SpawnRestriction;
+import net.minecraft.item.FoodComponent;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroup;
 import net.minecraft.item.SpawnEggItem;
+import net.minecraft.world.Difficulty;
 import net.minecraft.world.Heightmap;
 import software.bernie.geckolib3.GeckoLib;
 import net.minecraft.util.Identifier;
@@ -47,6 +51,14 @@ public class CheekyMonkeys implements ModInitializer {
 			MonkeyEntity.createEntityAttributes()
 		);
 
+		// INITIALIZE MONKEY SPAWNER
+		MonkeySpawner monkeySpawner = new MonkeySpawner();
+        ServerTickEvents.END_SERVER_TICK.register(server -> {
+            server.getWorlds().forEach(world -> {
+                monkeySpawner.spawn(world, server.getSaveProperties().getDifficulty() != Difficulty.PEACEFUL, server.shouldSpawnAnimals());
+            });
+        });
+
 		// REGISTER MONKEY SPAWN EGG
 		MONKEY_SPAWN_EGG = registerItem(
 			new SpawnEggItem(
@@ -58,9 +70,10 @@ public class CheekyMonkeys implements ModInitializer {
 			),
 			"monkey_spawn_egg"
 		);
-
+		// BANANA FOOD COMPONENT
+		FoodComponent foodComponent = (new FoodComponent.Builder()).hunger(4).saturationModifier(0.3F).build();
 		// REGISTER BANANA ITEM
-		BANANA_ITEM = new Item(new FabricItemSettings().group(ItemGroup.MISC));
+		BANANA_ITEM = new Item(new FabricItemSettings().group(ItemGroup.FOOD).food(foodComponent));
 		registerItem(BANANA_ITEM, "banana_item");
 
 	}

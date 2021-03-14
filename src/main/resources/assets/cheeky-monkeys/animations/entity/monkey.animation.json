@@ -395,7 +395,7 @@
 				}
 			}
 		},
-		"animation.model.sitting": {
+		"animation.monkey.sit": {
 			"loop": true,
 			"animation_length": 1.54167,
 			"bones": {
@@ -856,6 +856,5 @@
 				}
 			}
 		}
-	},
-	"geckolib_format_version": 2
+	}
 }
