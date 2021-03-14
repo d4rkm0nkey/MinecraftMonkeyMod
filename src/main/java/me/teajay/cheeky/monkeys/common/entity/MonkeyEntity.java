@@ -6,6 +6,7 @@ import java.util.UUID;
 import me.teajay.cheeky.monkeys.common.CheekyMonkeys;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnReason;
+import net.minecraft.entity.ai.goal.AnimalMateGoal;
 import net.minecraft.entity.ai.goal.LookAroundGoal;
 import net.minecraft.entity.ai.goal.LookAtEntityGoal;
 import net.minecraft.entity.ai.goal.SitGoal;
@@ -17,6 +18,7 @@ import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.data.TrackedData;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
 import net.minecraft.entity.mob.MobEntity;
+import net.minecraft.entity.passive.AnimalEntity;
 import net.minecraft.entity.passive.PassiveEntity;
 import net.minecraft.entity.passive.TameableEntity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -120,6 +122,7 @@ public class MonkeyEntity extends TameableEntity implements IAnimatable {
 		this.goalSelector.add(3, new WanderAroundFarGoal(this, 1.0D));
 		this.goalSelector.add(4, new LookAtEntityGoal(this, PlayerEntity.class, 8.0F));
 		this.goalSelector.add(5, new LookAroundGoal(this));
+		this.goalSelector.add(6, new AnimalMateGoal(this, 1.0D));
 	}
 
 	@Override
@@ -175,6 +178,25 @@ public class MonkeyEntity extends TameableEntity implements IAnimatable {
 		}
 	}
 
+	public boolean canBreedWith(AnimalEntity other) {
+		if (other == this) {
+		   return false;
+		} else if (!this.isTamed()) {
+		   return false;
+		} else if (!(other instanceof MonkeyEntity)) {
+		   return false;
+		} else {
+		    MonkeyEntity monkeyEntity = (MonkeyEntity)other;
+		   if (!monkeyEntity.isTamed()) {
+			  return false;
+		   } else if (monkeyEntity.isInSittingPose()) {
+			  return false;
+		   } else {
+			  return this.isInLove() && monkeyEntity.isInLove();
+		   }
+		}
+	 }
+
 	@Override
     public boolean isSitting() {
         return this.dataTracker.get(SITTING);
@@ -184,4 +206,5 @@ public class MonkeyEntity extends TameableEntity implements IAnimatable {
     public void setSitting(boolean sitting) {
         this.dataTracker.set(SITTING, sitting);
     }
+	
 }
