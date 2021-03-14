@@ -1,4 +1,5 @@
 {
     "entity.cheeky-monkeys.monkey": "Monkey",
-    "entity.cheeky-monkeys.monkey_spawn_egg": "Monkey Spawn Egg"
+    "entity.cheeky-monkeys.monkey_spawn_egg": "Monkey Spawn Egg",
+    "item.cheeky-monkeys.banana_item": "Banana"
 }

@@ -1,7 +1,8 @@
-package me.lumpy.monkey.cheeky.monkeys.common;
+package me.teajay.cheeky.monkeys.common;
 
-import me.lumpy.monkey.cheeky.monkeys.common.entity.MonkeyEntity;
+import me.teajay.cheeky.monkeys.common.entity.MonkeyEntity;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.item.v1.FabricItemSettings;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricEntityTypeBuilder;
 import net.minecraft.entity.EntityDimensions;
@@ -13,12 +14,14 @@ import net.minecraft.item.ItemGroup;
 import net.minecraft.item.SpawnEggItem;
 import net.minecraft.world.Heightmap;
 import software.bernie.geckolib3.GeckoLib;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.registry.Registry;
 
 public class CheekyMonkeys implements ModInitializer {
     public static final String MODID = "cheeky-monkeys";
 	public static EntityType<MonkeyEntity> MONKEY;
 	public static Item MONKEY_SPAWN_EGG;
+	public static Item BANANA_ITEM;
 
 	@Override
 	public void onInitialize() {
@@ -39,7 +42,11 @@ public class CheekyMonkeys implements ModInitializer {
 					MonkeyEntity::canSpawn
 				).build()
 		);
-		FabricDefaultAttributeRegistry.register(MONKEY, MonkeyEntity.createEntityAttributes());
+		FabricDefaultAttributeRegistry.register(
+			MONKEY, 
+			MonkeyEntity.createEntityAttributes()
+		);
+
 		// REGISTER MONKEY SPAWN EGG
 		MONKEY_SPAWN_EGG = registerItem(
 			new SpawnEggItem(
@@ -47,17 +54,23 @@ public class CheekyMonkeys implements ModInitializer {
 				0x583D1E,
 				0xECC892,
 				(new Item.Settings())
-					.group(ItemGroup.MISC)),
-				"monkey_spawn_egg"
-			);
+					.group(ItemGroup.MISC)
+			),
+			"monkey_spawn_egg"
+		);
+
+		// REGISTER BANANA ITEM
+		BANANA_ITEM = new Item(new FabricItemSettings().group(ItemGroup.MISC));
+		registerItem(BANANA_ITEM, "banana_item");
+
 	}
 
-	private EntityType<MonkeyEntity> registryEntity(String string, EntityType<MonkeyEntity> entityType) {
-		return Registry.register(Registry.ENTITY_TYPE, MODID + ":" + string, entityType);
+	private EntityType<MonkeyEntity> registryEntity(String name, EntityType<MonkeyEntity> entityType) {
+		return Registry.register(Registry.ENTITY_TYPE, new Identifier(MODID, name), entityType);
 	}
 
 	public static Item registerItem(Item item, String name) {
-        Registry.register(Registry.ITEM, MODID + ":" + name, item);
+        Registry.register(Registry.ITEM, new Identifier(MODID, name), item);
         return item;
     }
 }

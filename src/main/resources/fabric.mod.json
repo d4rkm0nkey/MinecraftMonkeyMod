@@ -6,7 +6,7 @@
   "name": "Cheeky Monkeys",
   "description": "This is an example description! Tell everyone what your mod is about!",
   "authors": [
-    "Me!"
+    "TeaJay"
   ],
   "contact": {
     "homepage": "https://fabricmc.net/",
@@ -19,10 +19,10 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "me.lumpy.monkey.cheeky.monkeys.common.CheekyMonkeys"
+      "me.teajay.cheeky.monkeys.common.CheekyMonkeys"
     ],
     "client": [
-      "me.lumpy.monkey.cheeky.monkeys.client.CheekyMonkeysClient"
+      "me.teajay.cheeky.monkeys.client.CheekyMonkeysClient"
     ]
   },
   "mixins": [

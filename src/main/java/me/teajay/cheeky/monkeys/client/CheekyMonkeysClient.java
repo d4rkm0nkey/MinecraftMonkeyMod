@@ -1,7 +1,7 @@
-package me.lumpy.monkey.cheeky.monkeys.client;
+package me.teajay.cheeky.monkeys.client;
 
-import me.lumpy.monkey.cheeky.monkeys.client.render.entity.MonkeyEntityRenderer;
-import me.lumpy.monkey.cheeky.monkeys.common.CheekyMonkeys;
+import me.teajay.cheeky.monkeys.client.render.entity.MonkeyEntityRenderer;
+import me.teajay.cheeky.monkeys.common.CheekyMonkeys;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.rendereregistry.v1.EntityRendererRegistry;
 

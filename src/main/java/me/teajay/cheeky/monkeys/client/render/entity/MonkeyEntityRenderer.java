@@ -1,7 +1,7 @@
-package me.lumpy.monkey.cheeky.monkeys.client.render.entity;
+package me.teajay.cheeky.monkeys.client.render.entity;
 
-import me.lumpy.monkey.cheeky.monkeys.client.model.MonkeyEntityModel;
-import me.lumpy.monkey.cheeky.monkeys.common.entity.MonkeyEntity;
+import me.teajay.cheeky.monkeys.client.model.MonkeyEntityModel;
+import me.teajay.cheeky.monkeys.common.entity.MonkeyEntity;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.entity.EntityRenderDispatcher;
 import net.minecraft.client.util.math.MatrixStack;

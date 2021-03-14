@@ -1,7 +1,7 @@
-package me.lumpy.monkey.cheeky.monkeys.client.model;
+package me.teajay.cheeky.monkeys.client.model;
 
-import me.lumpy.monkey.cheeky.monkeys.common.CheekyMonkeys;
-import me.lumpy.monkey.cheeky.monkeys.common.entity.MonkeyEntity;
+import me.teajay.cheeky.monkeys.common.CheekyMonkeys;
+import me.teajay.cheeky.monkeys.common.entity.MonkeyEntity;
 import net.minecraft.util.Identifier;
 import software.bernie.geckolib3.model.AnimatedGeoModel;
 
@@ -20,6 +20,5 @@ public class MonkeyEntityModel extends AnimatedGeoModel<MonkeyEntity> {
     @Override
     public Identifier getTextureLocation(MonkeyEntity monkey) {
         return new Identifier(CheekyMonkeys.MODID, "textures/entity/monkey.png");
-    }  
-    
+    }
 }
