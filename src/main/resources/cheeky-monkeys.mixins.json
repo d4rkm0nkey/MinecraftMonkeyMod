@@ -6,8 +6,8 @@
   "mixins": [
     "TreeDecoratorTypeInvoker",
     "ConfiguredFeaturesAccessor",
-    "ConfiguredFeaturesMixin",
-    "TreeFeatureMixin"
+    "ConfiguredFeaturesStatesAccessor",
+    "DefaultBiomeFeaturesMixin"
   ],
   "client": [
   ],

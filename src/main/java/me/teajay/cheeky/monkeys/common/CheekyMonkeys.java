@@ -3,6 +3,7 @@ package me.teajay.cheeky.monkeys.common;
 import me.teajay.cheeky.monkeys.common.block.BananaBlock;
 import me.teajay.cheeky.monkeys.common.entity.MonkeyEntity;
 import me.teajay.cheeky.monkeys.common.world.MonkeySpawner;
+import me.teajay.cheeky.monkeys.common.world.gen.tree.BananaTreeRegister;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.item.v1.FabricItemSettings;
@@ -21,6 +22,8 @@ import net.minecraft.item.ItemGroup;
 import net.minecraft.item.SpawnEggItem;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.Heightmap;
+import net.minecraft.world.gen.feature.ConfiguredFeature;
+import net.minecraft.world.gen.feature.TreeFeatureConfig;
 import software.bernie.geckolib3.GeckoLib;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.registry.Registry;
@@ -31,6 +34,8 @@ public class CheekyMonkeys implements ModInitializer {
 	public static Item MONKEY_SPAWN_EGG;
 	public static Item BANANA_ITEM;
 	public static final BananaBlock BANANA_BLOCK = new BananaBlock(Block.Settings.of(Material.PLANT));
+	public static final ConfiguredFeature<TreeFeatureConfig, ?> BANANA_TREE = BananaTreeRegister.registerBananaTree();
+	public static final ConfiguredFeature<?, ?> BANANA_TREES_JUNGLE = BananaTreeRegister.registerBananaTrees();
 
 	@Override
 	public void onInitialize() {
@@ -83,7 +88,6 @@ public class CheekyMonkeys implements ModInitializer {
 		registerItem(BANANA_ITEM, "banana_item");
 
 		Registry.register(Registry.BLOCK, new Identifier(MODID, "banana_block"), BANANA_BLOCK);
-
 	}
 
 	private EntityType<MonkeyEntity> registryEntity(String name, EntityType<MonkeyEntity> entityType) {
