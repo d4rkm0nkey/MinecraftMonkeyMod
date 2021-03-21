@@ -1,0 +1,16 @@
+{
+    "variants": {
+      "age=0,facing=north": { "model": "cheeky-monkeys:block/banana_block" },
+      "age=1,facing=north": { "model": "cheeky-monkeys:block/banana_block_young"},
+      "age=2,facing=north": { "model": "cheeky-monkeys:block/banana_block_grown" },
+      "age=0,facing=east": { "model": "cheeky-monkeys:block/banana_block", "y": 90 },
+      "age=1,facing=east": { "model": "cheeky-monkeys:block/banana_block_young", "y": 90 },
+      "age=2,facing=east": { "model": "cheeky-monkeys:block/banana_block_grown", "y": 90 },
+      "age=0,facing=south": { "model": "cheeky-monkeys:block/banana_block", "y": 180 },
+      "age=1,facing=south": { "model": "cheeky-monkeys:block/banana_block_young", "y": 180 },
+      "age=2,facing=south": { "model": "cheeky-monkeys:block/banana_block_grown", "y": 180 },
+      "age=0,facing=west": { "model": "cheeky-monkeys:block/banana_block", "y": 270 },
+      "age=1,facing=west": { "model": "cheeky-monkeys:block/banana_block_young", "y": 270 },
+      "age=2,facing=west": { "model": "cheeky-monkeys:block/banana_block_grown", "y": 270 }
+    }
+}

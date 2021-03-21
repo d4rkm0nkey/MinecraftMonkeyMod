@@ -27,7 +27,6 @@ public class MonkeyEntityModel extends AnimatedGeoModel<MonkeyEntity> {
     @Override
     public void setLivingAnimations(MonkeyEntity entity, Integer uniqueID, AnimationEvent customPredicate) {
         super.setLivingAnimations(entity, uniqueID, customPredicate);
-
         if (entity.isBaby()) {
             IBone root = this.getAnimationProcessor().getBone("Root");
             if (root != null) {

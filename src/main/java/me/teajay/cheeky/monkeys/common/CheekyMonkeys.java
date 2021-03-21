@@ -1,5 +1,6 @@
 package me.teajay.cheeky.monkeys.common;
 
+import me.teajay.cheeky.monkeys.common.block.BananaBlock;
 import me.teajay.cheeky.monkeys.common.entity.MonkeyEntity;
 import me.teajay.cheeky.monkeys.common.world.MonkeySpawner;
 import net.fabricmc.api.ModInitializer;
@@ -7,10 +8,13 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.item.v1.FabricItemSettings;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricEntityTypeBuilder;
+import net.minecraft.block.Block;
+import net.minecraft.block.Material;
 import net.minecraft.entity.EntityDimensions;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnGroup;
 import net.minecraft.entity.SpawnRestriction;
+import net.minecraft.item.BlockItem;
 import net.minecraft.item.FoodComponent;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroup;
@@ -26,6 +30,7 @@ public class CheekyMonkeys implements ModInitializer {
 	public static EntityType<MonkeyEntity> MONKEY;
 	public static Item MONKEY_SPAWN_EGG;
 	public static Item BANANA_ITEM;
+	public static final BananaBlock BANANA_BLOCK = new BananaBlock(Block.Settings.of(Material.PLANT));
 
 	@Override
 	public void onInitialize() {
@@ -51,6 +56,7 @@ public class CheekyMonkeys implements ModInitializer {
 			MonkeyEntity.createEntityAttributes()
 		);
 
+
 		// INITIALIZE MONKEY SPAWNER
 		MonkeySpawner monkeySpawner = new MonkeySpawner();
         ServerTickEvents.END_SERVER_TICK.register(server -> {
@@ -73,8 +79,10 @@ public class CheekyMonkeys implements ModInitializer {
 		// BANANA FOOD COMPONENT
 		FoodComponent foodComponent = (new FoodComponent.Builder()).hunger(4).saturationModifier(0.3F).build();
 		// REGISTER BANANA ITEM
-		BANANA_ITEM = new Item(new FabricItemSettings().group(ItemGroup.FOOD).food(foodComponent));
+		BANANA_ITEM = new BlockItem(BANANA_BLOCK, new FabricItemSettings().group(ItemGroup.FOOD).food(foodComponent));
 		registerItem(BANANA_ITEM, "banana_item");
+
+		Registry.register(Registry.BLOCK, new Identifier(MODID, "banana_block"), BANANA_BLOCK);
 
 	}
 

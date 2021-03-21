@@ -21,14 +21,12 @@ public class MonkeySpawner implements Spawner {
     private int ticksUntilNextSpawn;
 
     private int spawnMonkey(ServerWorld world, BlockPos pos) {
-        System.out.println("Monkey nearly spawned");
         if (MonkeyEntity.canSpawn(CheekyMonkeys.MONKEY, world, SpawnReason.NATURAL, pos, world.getRandom())) {
             MonkeyEntity monkeyEntity = CheekyMonkeys.MONKEY.create(world);
             if (monkeyEntity != null) {
                 monkeyEntity.initialize(world, world.getLocalDifficulty(pos), SpawnReason.NATURAL, (EntityData) null, (CompoundTag) null);
                 monkeyEntity.refreshPositionAndAngles(pos, 0.0F, 0.0F);
                 world.spawnEntityAndPassengers(monkeyEntity);
-                System.out.println("Monkey Spawned!");
                 return 1;
             }
         }

@@ -3,7 +3,9 @@ package me.teajay.cheeky.monkeys.client;
 import me.teajay.cheeky.monkeys.client.render.entity.MonkeyEntityRenderer;
 import me.teajay.cheeky.monkeys.common.CheekyMonkeys;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap;
 import net.fabricmc.fabric.api.client.rendereregistry.v1.EntityRendererRegistry;
+import net.minecraft.client.render.RenderLayer;
 
 public class CheekyMonkeysClient implements ClientModInitializer {
 
@@ -13,6 +15,6 @@ public class CheekyMonkeysClient implements ClientModInitializer {
             CheekyMonkeys.MONKEY,
             (entityRenderDispatcher, context) -> new MonkeyEntityRenderer(entityRenderDispatcher)
         );
+        BlockRenderLayerMap.INSTANCE.putBlock(CheekyMonkeys.BANANA_BLOCK, RenderLayer.getCutout());
     }
-    
 }

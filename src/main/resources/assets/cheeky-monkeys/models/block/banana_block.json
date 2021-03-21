@@ -1,0 +1,114 @@
+{
+	"credit": "Made with Blockbench",
+	"textures": {
+		"0": "cheeky-monkeys:block/banana_holder",
+		"1": "cheeky-monkeys:block/banana_blossom",
+		"particle": "cheeky-monkeys:block/banana_blossom"
+	},
+	"elements": [
+		{
+			"name": "Holder",
+			"from": [8, 9, 0],
+			"to": [8, 12, 3],
+			"rotation": {"angle": 0, "axis": "y", "origin": [0, 2, 0]},
+			"faces": {
+				"north": {"uv": [0, 0, 0, 3], "texture": "#0"},
+				"east": {"uv": [8, 8, 16, 16], "texture": "#0"},
+				"south": {"uv": [0, 8, 8, 16], "texture": "#0"},
+				"west": {"uv": [0, 8, 8, 16], "texture": "#0"},
+				"up": {"uv": [0, 0, 0, 3], "texture": "#0"},
+				"down": {"uv": [0, 0, 0, 3], "texture": "#0"}
+			}
+		},
+		{
+			"from": [7.5, 10, 3],
+			"to": [8.5, 11, 4],
+			"rotation": {"angle": 0, "axis": "y", "origin": [0, 2, 0]},
+			"faces": {
+				"north": {"uv": [0, 0, 3, 3], "texture": "#0"},
+				"east": {"uv": [3, 3, 6, 6], "texture": "#0"},
+				"south": {"uv": [0, 3, 3, 6], "texture": "#0"},
+				"west": {"uv": [3, 0, 6, 3], "texture": "#0"},
+				"up": {"uv": [6, 0, 9, 3], "texture": "#0"},
+				"down": {"uv": [6, 3, 9, 6], "texture": "#0"}
+			}
+		},
+		{
+			"name": "BananaStick",
+			"from": [7, 8, 2.5],
+			"to": [9, 10, 4.5],
+			"rotation": {"angle": 0, "axis": "y", "origin": [0, 3, 0]},
+			"faces": {
+				"north": {"uv": [0, 0, 4, 4], "texture": "#1"},
+				"east": {"uv": [8, 0, 12, 4], "texture": "#1"},
+				"south": {"uv": [4, 0, 8, 4], "texture": "#1"},
+				"west": {"uv": [4, 0, 6, 3], "texture": "#1"},
+				"up": {"uv": [0, 8, 4, 12], "texture": "#1"},
+				"down": {"uv": [0, 12, 4, 16], "texture": "#1"}
+			}
+		},
+		{
+			"name": "BananaLeaf",
+			"from": [6, 10, 2.5],
+			"to": [7, 10, 4.5],
+			"rotation": {"angle": 45, "axis": "z", "origin": [7, 10, 3.5]},
+			"faces": {
+				"north": {"uv": [0, 13, 2, 16], "texture": "#1"},
+				"east": {"uv": [6, 13, 8, 16], "texture": "#1"},
+				"south": {"uv": [2, 13, 4, 16], "texture": "#1"},
+				"west": {"uv": [4, 13, 6, 16], "texture": "#1"},
+				"up": {"uv": [13, 11, 16, 16], "texture": "#1"},
+				"down": {"uv": [13, 6, 16, 11], "texture": "#1"}
+			}
+		},
+		{
+			"name": "BananaLeaf",
+			"from": [9, 10, 2.5],
+			"to": [10, 10, 4.5],
+			"rotation": {"angle": -45, "axis": "z", "origin": [9, 10, 3.5]},
+			"faces": {
+				"north": {"uv": [0, 13, 2, 16], "texture": "#1"},
+				"east": {"uv": [6, 13, 8, 16], "texture": "#1"},
+				"south": {"uv": [2, 13, 4, 16], "texture": "#1"},
+				"west": {"uv": [4, 13, 6, 16], "texture": "#1"},
+				"up": {"uv": [7, 11, 10, 16], "texture": "#1"},
+				"down": {"uv": [7, 6, 10, 11], "texture": "#1"}
+			}
+		},
+		{
+			"name": "BananaLeaf",
+			"from": [7, 10, 4.5],
+			"to": [9, 10, 5.5],
+			"rotation": {"angle": 45, "axis": "x", "origin": [8, 10, 4.5]},
+			"faces": {
+				"north": {"uv": [6, 13, 8, 16], "texture": "#1"},
+				"east": {"uv": [2, 13, 4, 16], "texture": "#1"},
+				"south": {"uv": [4, 13, 6, 16], "texture": "#1"},
+				"west": {"uv": [0, 13, 2, 16], "texture": "#1"},
+				"up": {"uv": [10, 11, 13, 16], "rotation": 270, "texture": "#1"},
+				"down": {"uv": [10, 6, 13, 11], "rotation": 90, "texture": "#1"}
+			}
+		},
+		{
+			"name": "BananaLeaf",
+			"from": [7, 10, 1.5],
+			"to": [9, 10, 2.5],
+			"rotation": {"angle": -45, "axis": "x", "origin": [8, 10, 2.5]},
+			"faces": {
+				"north": {"uv": [6, 13, 8, 16], "texture": "#1"},
+				"east": {"uv": [2, 13, 4, 16], "texture": "#1"},
+				"south": {"uv": [4, 13, 6, 16], "texture": "#1"},
+				"west": {"uv": [0, 13, 2, 16], "texture": "#1"},
+				"up": {"uv": [4, 11, 7, 16], "rotation": 270, "texture": "#1"},
+				"down": {"uv": [4, 6, 7, 11], "rotation": 90, "texture": "#1"}
+			}
+		}
+	],
+	"groups": [0, 1,
+		{
+			"name": "Bananas",
+			"origin": [0, 0, 0],
+			"children": [2, 3, 4, 5, 6]
+		}
+	]
+}
