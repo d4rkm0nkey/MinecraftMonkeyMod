@@ -4,6 +4,7 @@ import java.util.Random;
 import java.util.UUID;
 
 import me.teajay.cheeky.monkeys.common.CheekyMonkeys;
+import me.teajay.cheeky.monkeys.common.entity.ai.MonkeyFollowOwnerGoal;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnReason;
 import net.minecraft.entity.ai.goal.AnimalMateGoal;
@@ -119,10 +120,11 @@ public class MonkeyEntity extends TameableEntity implements IAnimatable {
 	protected void initGoals() {
 		this.goalSelector.add(1, new SwimGoal(this));
 		this.goalSelector.add(2, new SitGoal(this));
-		this.goalSelector.add(3, new WanderAroundFarGoal(this, 1.0D));
-		this.goalSelector.add(4, new LookAtEntityGoal(this, PlayerEntity.class, 8.0F));
-		this.goalSelector.add(5, new LookAroundGoal(this));
-		this.goalSelector.add(6, new AnimalMateGoal(this, 1.0D));
+		this.goalSelector.add(3, new MonkeyFollowOwnerGoal(this, 1.5D, 8.0F, 2.0F, true));
+		this.goalSelector.add(4, new WanderAroundFarGoal(this, 1.0D));
+		this.goalSelector.add(5, new LookAtEntityGoal(this, PlayerEntity.class, 8.0F));
+		this.goalSelector.add(6, new LookAroundGoal(this));
+		this.goalSelector.add(7, new AnimalMateGoal(this, 1.0D));
 	}
 
 	@Override
