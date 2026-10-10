@@ -1,0 +1,15 @@
+{
+  "type": "neoforge:add_spawns",
+  "biomes": "#cheeky_monkeys:has_monkeys",
+  "spawners": [
+    {
+      "type": "cheeky_monkeys:monkey",
+      "count": {
+        "type": "minecraft:uniform",
+        "min_inclusive": 2,
+        "max_inclusive": 4
+      },
+      "weight": 20
+    }
+  ]
+}

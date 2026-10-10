@@ -1,0 +1,13 @@
+{
+  "block.cheeky_monkeys.banana_bunch": "Banana Bunch",
+  "entity.cheeky_monkeys.monkey": "Monkey",
+  "item.cheeky_monkeys.banana": "Banana",
+  "item.cheeky_monkeys.monkey_spawn_egg": "Monkey Spawn Egg",
+  "subtitles.cheeky_monkeys.entity.monkey.ambient": "Monkey chatters",
+  "subtitles.cheeky_monkeys.entity.monkey.hurt": "Monkey shrieks",
+  "subtitles.cheeky_monkeys.entity.monkey.death": "Monkey dies",
+  "subtitles.cheeky_monkeys.entity.monkey.eat": "Monkey munches",
+  "subtitles.cheeky_monkeys.entity.monkey.happy": "Monkey cheers",
+  "subtitles.cheeky_monkeys.entity.monkey.chest_pound": "Monkey pounds its chest",
+  "tag.item.cheeky_monkeys.monkey_food": "Monkey Food"
+}

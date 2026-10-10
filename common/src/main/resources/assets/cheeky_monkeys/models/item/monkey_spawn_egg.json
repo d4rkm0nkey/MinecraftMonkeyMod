@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "cheeky_monkeys:item/monkey_spawn_egg"
+  }
+}

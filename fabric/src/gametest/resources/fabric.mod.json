@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "cheeky_monkeys_gametest",
+  "version": "1.0.0",
+  "name": "Cheeky Monkeys Client Game Tests",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-client-gametest": ["me.teajay.cheeky.monkeys.fabric.gametest.MonkeyShowcaseClientGameTest"]
+  },
+  "depends": {
+    "cheeky_monkeys": "*"
+  }
+}

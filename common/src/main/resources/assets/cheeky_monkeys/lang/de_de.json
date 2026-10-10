@@ -1,0 +1,13 @@
+{
+  "block.cheeky_monkeys.banana_bunch": "Bananenstaude",
+  "entity.cheeky_monkeys.monkey": "Affe",
+  "item.cheeky_monkeys.banana": "Banane",
+  "item.cheeky_monkeys.monkey_spawn_egg": "Affen-Spawn-Ei",
+  "subtitles.cheeky_monkeys.entity.monkey.ambient": "Affe schnattert",
+  "subtitles.cheeky_monkeys.entity.monkey.hurt": "Affe kreischt",
+  "subtitles.cheeky_monkeys.entity.monkey.death": "Affe stirbt",
+  "subtitles.cheeky_monkeys.entity.monkey.eat": "Affe mampft",
+  "subtitles.cheeky_monkeys.entity.monkey.happy": "Affe jubelt",
+  "subtitles.cheeky_monkeys.entity.monkey.chest_pound": "Affe trommelt auf die Brust",
+  "tag.item.cheeky_monkeys.monkey_food": "Affenfutter"
+}

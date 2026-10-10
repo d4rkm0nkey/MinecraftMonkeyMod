@@ -1,0 +1,9 @@
+{
+  "values": [
+    "minecraft:grass_block",
+    "minecraft:podzol",
+    "minecraft:moss_block",
+    "#minecraft:leaves",
+    "#minecraft:logs"
+  ]
+}

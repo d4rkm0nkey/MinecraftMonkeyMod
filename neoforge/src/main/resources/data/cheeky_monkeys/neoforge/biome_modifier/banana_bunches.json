@@ -1,0 +1,6 @@
+{
+  "type": "neoforge:add_features",
+  "biomes": "#cheeky_monkeys:has_monkeys",
+  "features": "cheeky_monkeys:banana_bunches",
+  "step": "vegetal_decoration"
+}

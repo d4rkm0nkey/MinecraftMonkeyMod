@@ -1,0 +1,42 @@
+{
+  "entity.monkey.ambient": {
+    "subtitle": "subtitles.cheeky_monkeys.entity.monkey.ambient",
+    "sounds": [
+      "cheeky_monkeys:entity/monkey/ambient1",
+      "cheeky_monkeys:entity/monkey/ambient2",
+      "cheeky_monkeys:entity/monkey/ambient3"
+    ]
+  },
+  "entity.monkey.hurt": {
+    "subtitle": "subtitles.cheeky_monkeys.entity.monkey.hurt",
+    "sounds": [
+      "cheeky_monkeys:entity/monkey/hurt1",
+      "cheeky_monkeys:entity/monkey/hurt2"
+    ]
+  },
+  "entity.monkey.death": {
+    "subtitle": "subtitles.cheeky_monkeys.entity.monkey.death",
+    "sounds": [
+      "cheeky_monkeys:entity/monkey/death"
+    ]
+  },
+  "entity.monkey.eat": {
+    "subtitle": "subtitles.cheeky_monkeys.entity.monkey.eat",
+    "sounds": [
+      "cheeky_monkeys:entity/monkey/eat1",
+      "cheeky_monkeys:entity/monkey/eat2"
+    ]
+  },
+  "entity.monkey.happy": {
+    "subtitle": "subtitles.cheeky_monkeys.entity.monkey.happy",
+    "sounds": [
+      "cheeky_monkeys:entity/monkey/happy"
+    ]
+  },
+  "entity.monkey.chest_pound": {
+    "subtitle": "subtitles.cheeky_monkeys.entity.monkey.chest_pound",
+    "sounds": [
+      "cheeky_monkeys:entity/monkey/chest_pound"
+    ]
+  }
+}

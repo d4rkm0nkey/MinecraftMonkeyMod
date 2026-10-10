@@ -1,0 +1,35 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "modifier": [
+            {
+              "type": "minecraft:set_count",
+              "condition": {
+                "type": "minecraft:match_block",
+                "blocks": "cheeky_monkeys:banana_bunch",
+                "state": {
+                  "age": "2"
+                }
+              },
+              "count": {
+                "type": "minecraft:uniform",
+                "min": 2,
+                "max": 4
+              }
+            },
+            {
+              "type": "minecraft:explosion_decay"
+            }
+          ],
+          "name": "cheeky_monkeys:banana"
+        }
+      ],
+      "rolls": 1
+    }
+  ],
+  "random_sequence": "cheeky_monkeys:blocks/banana_bunch"
+}
