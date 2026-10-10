@@ -19,9 +19,19 @@ import org.jspecify.annotations.Nullable;
 /// under the canopy to its edge, climb up the outside of the leaves and sit on top. From there they leap across to
 /// neighbouring trees, and eventually climb back down the way they came or jump down.
 ///
-/// With `fleeing` set, the goal instead sends a monkey that just got hurt up the nearest tree, out of reach.
+/// The other [modes][Mode] send a monkey that just got hurt up the nearest tree, out of reach, or up the tree a player
+/// holding a banana is standing on, to come and get it.
 public class MonkeyTreeGoal extends Goal {
-    private enum Phase { APPROACH, TRAVEL, PERCH, HANG, DONE }
+    public enum Mode {
+        /// Up into the trees just because
+        LEISURE,
+        /// Up the nearest tree after getting hurt
+        FLEE,
+        /// Up to a player standing in a tree with a banana
+        TEMPTED
+    }
+
+    private enum Phase { APPROACH, TRAVEL, PERCH, HANG, FOLLOW, DONE }
 
     private static final int AVERAGE_START_INTERVAL = 600;
     private static final int APPROACH_TIMEOUT = 200;
@@ -31,9 +41,12 @@ public class MonkeyTreeGoal extends Goal {
     /// Highest a hanging monkey lets go from
     private static final int MAX_HANG_DROP = 6;
     private static final double FLEE_SPEED_FACTOR = 1.8;
+    private static final double TEMPT_RANGE = 16.0;
+    private static final int TEMPT_CHECK_INTERVAL = 20;
     private static final MonkeyEmote[] PERCH_EMOTES = {MonkeyEmote.CHEST_POUND, MonkeyEmote.LOOK_AROUND, MonkeyEmote.SCRATCH_HEAD};
 
     private final MonkeyEntity monkey;
+    private final Mode mode;
     private final boolean fleeing;
     private Phase phase = Phase.DONE;
     private int phaseTicks;
@@ -44,10 +57,13 @@ public class MonkeyTreeGoal extends Goal {
     private int treeLeapsLeft;
     private int cooldownUntil;
     private @Nullable Vec3 lookTarget;
+    private @Nullable Player tempter;
+    private int nextTemptCheck;
 
-    public MonkeyTreeGoal(MonkeyEntity monkey, boolean fleeing) {
+    public MonkeyTreeGoal(MonkeyEntity monkey, Mode mode) {
         this.monkey = monkey;
-        this.fleeing = fleeing;
+        this.mode = mode;
+        this.fleeing = mode == Mode.FLEE;
         this.setFlags(EnumSet.of(Goal.Flag.MOVE, Goal.Flag.LOOK, Goal.Flag.JUMP));
     }
 
@@ -58,11 +74,15 @@ public class MonkeyTreeGoal extends Goal {
             return false;
         }
 
+        if (this.mode == Mode.TEMPTED) {
+            return this.canClimbToTempter();
+        }
+
         if (this.fleeing) {
             if (!this.wasHurtRecently()) {
                 return false;
             }
-        } else if (!this.monkey.isTreeClimbRequested()) {
+        } else if (!this.monkey.isTreeClimbRequested() && !this.isUpInTree()) {
             if (this.monkey.tickCount < this.cooldownUntil || this.wantsToComeDown()
                 || this.monkey.getRandom().nextInt(reducedTickDelay(AVERAGE_START_INTERVAL)) != 0) {
                 return false;
@@ -75,9 +95,38 @@ public class MonkeyTreeGoal extends Goal {
         }
 
         this.route = TreeSpots.findClimb(
-            this.monkey.level(), this.monkey.blockPosition(), this.fleeing ? 8 : 12, this.monkey.getRandom(), this.monkey.getVisualScale()
+            this.monkey.level(), this.monkey.blockPosition(), this.fleeing ? 8 : 12, this.monkey.getRandom(), this.monkey.getVisualScale(), null
         );
         return this.route != null;
+    }
+
+    /// A player up in a tree is holding a banana and there's a way up to them
+    private boolean canClimbToTempter() {
+        if (this.monkey.tickCount < this.nextTemptCheck) {
+            return false;
+        }
+
+        this.nextTemptCheck = this.monkey.tickCount + TEMPT_CHECK_INTERVAL;
+        Player player = this.monkey.level().getNearestPlayer(this.monkey, TEMPT_RANGE);
+        if (!this.isTempting(player) || !this.isUpInTree(player) || this.monkey.distanceToSqr(player) < 6.0) {
+            return false;
+        }
+
+        this.tempter = player;
+        if (this.isUpInTree()) {
+            this.route = null;
+            return true;
+        }
+
+        this.route = TreeSpots.findClimb(
+            this.monkey.level(), this.monkey.blockPosition(), (int)TEMPT_RANGE, this.monkey.getRandom(), this.monkey.getVisualScale(), player.position()
+        );
+        return this.route != null && this.route.perches();
+    }
+
+    private boolean isTempting(@Nullable Player player) {
+        return player != null && player.isAlive() && !player.isSpectator()
+            && (this.monkey.isFood(player.getMainHandItem()) || this.monkey.isFood(player.getOffhandItem()));
     }
 
     @Override
@@ -86,8 +135,12 @@ public class MonkeyTreeGoal extends Goal {
             return false;
         }
 
+        if (this.mode == Mode.TEMPTED && (this.phase == Phase.APPROACH || this.phase == Phase.FOLLOW) && !this.isStillTempted()) {
+            return false;
+        }
+
         // Sit right where you are, unless you're halfway up a trunk or mid-leap
-        return !this.monkey.isOrderedToSit() || this.phase != Phase.APPROACH && this.phase != Phase.PERCH;
+        return !this.monkey.isOrderedToSit() || this.phase != Phase.APPROACH && this.phase != Phase.PERCH && this.phase != Phase.FOLLOW;
     }
 
     @Override
@@ -108,7 +161,12 @@ public class MonkeyTreeGoal extends Goal {
 
         if (this.route == null) {
             // Already up a tree
-            this.perch(20 + this.monkey.getRandom().nextInt(60));
+            if (this.mode == Mode.TEMPTED) {
+                this.followTempter();
+            } else {
+                this.perch(20 + this.monkey.getRandom().nextInt(60));
+            }
+
             return;
         }
 
@@ -128,7 +186,12 @@ public class MonkeyTreeGoal extends Goal {
         this.route = null;
         this.wayBack = null;
         this.lookTarget = null;
-        this.cooldownUntil = this.monkey.tickCount + (this.fleeing ? 100 : 600 + this.monkey.getRandom().nextInt(1200));
+        this.tempter = null;
+        this.cooldownUntil = this.monkey.tickCount + switch (this.mode) {
+            case LEISURE -> 600 + this.monkey.getRandom().nextInt(1200);
+            case FLEE -> 100;
+            case TEMPTED -> 0;
+        };
     }
 
     @Override
@@ -138,6 +201,7 @@ public class MonkeyTreeGoal extends Goal {
             case APPROACH -> this.tickApproach();
             case PERCH -> this.tickPerch();
             case HANG -> this.tickHang();
+            case FOLLOW -> this.tickFollow();
             case TRAVEL, DONE -> {
             }
         }
@@ -182,7 +246,11 @@ public class MonkeyTreeGoal extends Goal {
         this.wayBack = climbRoute.reversed();
         this.setPhase(Phase.TRAVEL);
         int stay = this.fleeing ? 400 + this.monkey.getRandom().nextInt(400) : 200 + this.monkey.getRandom().nextInt(400);
-        this.follow(climbRoute.path(), 0, climbRoute.perches() ? () -> this.perch(stay) : () -> this.hang(stay / 2));
+        if (this.mode == Mode.TEMPTED) {
+            this.follow(climbRoute.path(), 0, this::followTempter);
+        } else {
+            this.follow(climbRoute.path(), 0, climbRoute.perches() ? () -> this.perch(stay) : () -> this.hang(stay / 2));
+        }
     }
 
     /// Glides along the waypoints from `index` on, then runs `then`
@@ -202,6 +270,33 @@ public class MonkeyTreeGoal extends Goal {
         this.monkey.setPosture(MonkeyState.PERCHING);
         this.setPhase(Phase.PERCH);
         this.phaseDuration = duration;
+    }
+
+    /// Up in the tree with the player; walk over the canopy to them, leaping across gaps on the way
+    private void followTempter() {
+        this.monkey.releaseScriptedMovement();
+        this.monkey.setPosture(null);
+        this.setPhase(Phase.FOLLOW);
+    }
+
+    private void tickFollow() {
+        Player player = this.tempter;
+        if (player == null || this.monkey.isGliding()) {
+            return;
+        }
+
+        this.monkey.getLookControl().setLookAt(player, 30.0F, this.monkey.getMaxHeadXRot());
+        if (this.monkey.distanceToSqr(player) < 2.5) {
+            this.monkey.getNavigation().stop();
+            this.monkey.setPosture(this.isUpInTree() ? MonkeyState.PERCHING : null);
+        } else if (this.phaseTicks % 10 == 0) {
+            this.monkey.setPosture(null);
+            this.monkey.getNavigation().moveTo(player, 1.1);
+        }
+    }
+
+    private boolean isStillTempted() {
+        return this.isTempting(this.tempter) && this.monkey.distanceToSqr(this.tempter) < TEMPT_RANGE * TEMPT_RANGE * 1.5;
     }
 
     private void hang(int duration) {
@@ -333,14 +428,20 @@ public class MonkeyTreeGoal extends Goal {
             return true;
         }
 
+        // A banana down on the ground; one up in the trees is a reason to stay
         Player player = this.monkey.level().getNearestPlayer(this.monkey, 10.0);
-        return player != null && (this.monkey.isFood(player.getMainHandItem()) || this.monkey.isFood(player.getOffhandItem()));
+        return this.isTempting(player) && !this.isUpInTree(player);
     }
 
     private boolean isUpInTree() {
-        BlockPos pos = this.monkey.blockPosition();
-        return this.monkey.onGround()
-            && TreeSpots.isTree(this.monkey.level().getBlockState(pos.below()))
-            && TreeSpots.heightAboveGround(this.monkey.level(), pos) >= 3;
+        return this.isUpInTree(this.monkey);
+    }
+
+    /// Standing on top of leaves or logs well above the ground
+    private boolean isUpInTree(LivingEntity entity) {
+        BlockPos pos = entity.blockPosition();
+        return entity.onGround()
+            && TreeSpots.isTree(entity.level().getBlockState(pos.below()))
+            && TreeSpots.heightAboveGround(entity.level(), pos) >= 3;
     }
 }

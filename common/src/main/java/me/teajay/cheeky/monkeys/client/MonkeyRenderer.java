@@ -10,6 +10,7 @@ import me.teajay.cheeky.monkeys.CheekyMonkeys;
 import me.teajay.cheeky.monkeys.entity.MonkeyEntity;
 import me.teajay.cheeky.monkeys.entity.MonkeyState;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.core.Direction;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.util.Mth;
 import org.jspecify.annotations.Nullable;
@@ -30,6 +31,17 @@ public class MonkeyRenderer extends GeoEntityRenderer<MonkeyEntity, LivingEntity
     public void addRenderData(MonkeyEntity monkey, @Nullable Void relatedObject, LivingEntityRenderState renderState, float partialTick) {
         renderState.addGeckolibData(MonkeyEntity.STATE_TICKET, monkey.getState());
         renderState.addGeckolibData(MonkeyEntity.MOVE_SPEED_TICKET, renderState.walkAnimationSpeed);
+
+        // Climbing monkeys always face what they're climbing, whichever way they're headed
+        if (monkey.getState() == MonkeyState.CLIMBING) {
+            Direction face = monkey.getClimbedFace();
+            if (face != null) {
+                renderState.bodyRot = face.toYRot();
+                renderState.yRot = 0.0F;
+                renderState.addGeckolibData(DataTickets.ENTITY_BODY_YAW, renderState.bodyRot);
+                renderState.addGeckolibData(DataTickets.ENTITY_YAW, 0.0F);
+            }
+        }
     }
 
     @Override
@@ -45,7 +57,7 @@ public class MonkeyRenderer extends GeoEntityRenderer<MonkeyEntity, LivingEntity
         float ageInTicks = renderState.ageInTicks;
 
         // Look at whatever the monkey is looking at, on top of the animated head pose
-        if (state != MonkeyState.SLEEPING) {
+        if (state != MonkeyState.SLEEPING && state != MonkeyState.CLIMBING) {
             float pitch = renderPassInfo.getOrDefaultGeckolibData(DataTickets.ENTITY_PITCH, 0.0F);
             float yaw = renderPassInfo.getOrDefaultGeckolibData(DataTickets.ENTITY_YAW, 0.0F);
 

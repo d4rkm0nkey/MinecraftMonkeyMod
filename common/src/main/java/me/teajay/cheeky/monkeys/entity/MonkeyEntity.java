@@ -16,6 +16,7 @@ import me.teajay.cheeky.monkeys.registry.ModEntities;
 import me.teajay.cheeky.monkeys.registry.ModSounds;
 import me.teajay.cheeky.monkeys.registry.ModTags;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -127,19 +128,21 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
         // Hurt monkeys flee up the nearest tree, or just run if there isn't one
-        this.goalSelector.addGoal(1, new MonkeyTreeGoal(this, true));
+        this.goalSelector.addGoal(1, new MonkeyTreeGoal(this, MonkeyTreeGoal.Mode.FLEE));
         this.goalSelector.addGoal(2, new TamableAnimal.TamableAnimalPanicGoal(1.4));
         this.goalSelector.addGoal(3, new SitWhenOrderedToGoal(this));
         this.goalSelector.addGoal(4, new BreedGoal(this, 1.0));
-        this.goalSelector.addGoal(5, new TemptGoal(this, 1.1, this::isFood, false));
-        this.goalSelector.addGoal(6, new FollowOwnerGoal(this, 1.2, 8.0F, 2.0F));
-        this.goalSelector.addGoal(7, new FollowParentGoal(this, 1.1));
-        this.goalSelector.addGoal(8, new MonkeyTreeGoal(this, false));
-        this.goalSelector.addGoal(9, new MonkeyIdleEmoteGoal(this));
-        this.goalSelector.addGoal(9, new MonkeyHopGoal(this));
-        this.goalSelector.addGoal(10, new WaterAvoidingRandomStrollGoal(this, 1.0));
-        this.goalSelector.addGoal(11, new LookAtPlayerGoal(this, Player.class, 8.0F));
-        this.goalSelector.addGoal(12, new RandomLookAroundGoal(this));
+        // A player up a tree with a banana gets climbed to; one on the ground just gets followed
+        this.goalSelector.addGoal(5, new MonkeyTreeGoal(this, MonkeyTreeGoal.Mode.TEMPTED));
+        this.goalSelector.addGoal(6, new TemptGoal(this, 1.1, this::isFood, false));
+        this.goalSelector.addGoal(7, new FollowOwnerGoal(this, 1.2, 8.0F, 2.0F));
+        this.goalSelector.addGoal(8, new FollowParentGoal(this, 1.1));
+        this.goalSelector.addGoal(9, new MonkeyTreeGoal(this, MonkeyTreeGoal.Mode.LEISURE));
+        this.goalSelector.addGoal(10, new MonkeyIdleEmoteGoal(this));
+        this.goalSelector.addGoal(10, new MonkeyHopGoal(this));
+        this.goalSelector.addGoal(11, new WaterAvoidingRandomStrollGoal(this, 1.0));
+        this.goalSelector.addGoal(12, new LookAtPlayerGoal(this, Player.class, 8.0F));
+        this.goalSelector.addGoal(13, new RandomLookAroundGoal(this));
     }
 
     public MonkeyState getState() {
@@ -303,6 +306,39 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
         if (landing != null) {
             this.leapTo(Vec3.atBottomCenterOf(landing), null);
         }
+    }
+
+    /// The side the block the monkey is climbing is on, worked out from the blocks around it so clients agree with the server.
+    /// It's the nearest neighbouring log, leaves or solid wall the monkey is touching.
+    public @Nullable Direction getClimbedFace() {
+        Vec3 pos = this.position();
+        Direction best = null;
+        double bestGap = 0.6;
+        for (Direction side : Direction.Plane.HORIZONTAL) {
+            BlockPos feet = BlockPos.containing(pos.x, pos.y + 0.1, pos.z);
+            // Distance from the monkey's middle to the face of the neighbouring block on that side
+            double gap = switch (side) {
+                case EAST -> feet.getX() + 1 - pos.x;
+                case WEST -> pos.x - feet.getX();
+                case SOUTH -> feet.getZ() + 1 - pos.z;
+                default -> pos.z - feet.getZ();
+            };
+            if (gap >= bestGap) {
+                continue;
+            }
+
+            for (double height : new double[]{0.1, this.getBbHeight() * 0.8}) {
+                BlockPos neighbour = BlockPos.containing(pos.x, pos.y + height, pos.z).relative(side);
+                BlockState state = this.level().getBlockState(neighbour);
+                if (TreeSpots.isTree(state) || state.isFaceSturdy(this.level(), neighbour, side.getOpposite())) {
+                    best = side;
+                    bestGap = gap;
+                    break;
+                }
+            }
+        }
+
+        return best;
     }
 
     /// Asks the monkey to climb the nearest tree as soon as it can

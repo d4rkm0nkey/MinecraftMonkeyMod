@@ -92,12 +92,13 @@ public final class TreeSpots {
         return isOpen(level, pos) && isOpen(level, pos.below()) && isTree(level.getBlockState(pos.above()));
     }
 
-    /// How far it is from `pos` down through air and leaves to the first solid block, or `MAX_DESCENT` if there's nothing
+    /// How far it is from `pos` down through air and trees to the first solid block that isn't part of a tree,
+    /// or `MAX_DESCENT` if there's nothing
     public static int heightAboveGround(BlockGetter level, BlockPos pos) {
         BlockPos.MutableBlockPos cursor = pos.mutable();
         for (int depth = 0; depth < MAX_DESCENT; depth++) {
             cursor.move(Direction.DOWN);
-            if (!isPassable(level, cursor)) {
+            if (!isPassable(level, cursor) && !isTree(level.getBlockState(cursor))) {
                 return depth;
             }
         }
@@ -107,7 +108,10 @@ public final class TreeSpots {
 
     /// Looks for trunks within `radius` that the monkey at `origin` could walk to and climb.
     /// `scale` is how big the monkey is drawn, which decides how far below the leaves it hangs.
-    public static @Nullable ClimbRoute findClimb(BlockGetter level, BlockPos origin, int radius, RandomSource random, float scale) {
+    /// With a `target`, picks the way up that ends closest to it.
+    public static @Nullable ClimbRoute findClimb(
+        BlockGetter level, BlockPos origin, int radius, RandomSource random, float scale, @Nullable Vec3 target
+    ) {
         List<ClimbRoute> routes = new ArrayList<>();
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
 
@@ -132,6 +136,13 @@ public final class TreeSpots {
 
         if (routes.isEmpty()) {
             return null;
+        }
+
+        if (target != null) {
+            return routes.stream()
+                .filter(ClimbRoute::perches)
+                .min(Comparator.comparingDouble(route -> route.path().getLast().pos().distanceToSqr(target)))
+                .orElse(null);
         }
 
         // Sitting on top of the tree is the goal; hanging around underneath is the fallback
@@ -364,8 +375,8 @@ public final class TreeSpots {
         return targets.isEmpty() ? null : targets.get(random.nextInt(targets.size()));
     }
 
-    /// Finds ground to leap to from `from` that gets the monkey closer to `target`, between 2 and 5 blocks ahead.
-    /// Used to jump over gaps and ditches that the pathfinder can't cross.
+    /// Finds ground, or a spot on top of a tree, to leap to from `from` that gets the monkey closer to `target`, between 2 and
+    /// 5 blocks ahead. Used to jump over gaps and ditches and between treetops where the pathfinder can't get across.
     public static @Nullable BlockPos findLeapToward(BlockGetter level, Vec3 from, Vec3 target) {
         Vec3 toTarget = target.subtract(from).multiply(1.0, 0.0, 1.0);
         double distance = toTarget.length();
@@ -382,7 +393,8 @@ public final class TreeSpots {
                 Vec3 point = from.add(ahead.scale(reach)).add(side.scale(offset));
                 for (int dy = 1; dy >= -3; dy--) {
                     BlockPos landing = BlockPos.containing(point.x, from.y + dy, point.z);
-                    if (isGround(level, landing) && Vec3.atBottomCenterOf(landing).distanceToSqr(target) < from.distanceToSqr(target) - 1.0
+                    if ((isGround(level, landing) || isPerch(level, landing))
+                        && Vec3.atBottomCenterOf(landing).distanceToSqr(target) < from.distanceToSqr(target) - 1.0
                         && canLeap(level, fromPos, landing)) {
                         return landing;
                     }

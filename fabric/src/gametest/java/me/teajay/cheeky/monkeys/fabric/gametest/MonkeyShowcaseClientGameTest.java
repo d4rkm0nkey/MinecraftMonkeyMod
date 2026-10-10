@@ -101,6 +101,7 @@ public class MonkeyShowcaseClientGameTest implements FabricClientGameTest {
 
             context.getInput().pressKey(options -> options.keyToggleGui);
             treeClimbing(context, server, ground);
+            climbToPlayer(context, server, ground);
             server.runCommand("gamemode survival @p");
             gapLeap(context, server, ground);
         }
@@ -159,6 +160,53 @@ public class MonkeyShowcaseClientGameTest implements FabricClientGameTest {
         if (Math.abs(landed.x - targetX) > 0.5 || Math.abs(landed.y - (ground + 5)) > 0.1) {
             throw new AssertionError("Expected the monkey to land on the other tree at x " + targetX + ", but it's at " + landed);
         }
+    }
+
+    /// A player standing on top of a tree with a banana gets a monkey climbing up to them
+    private static void climbToPlayer(ClientGameTestContext context, TestServerContext server, int ground) {
+        server.runCommand("gamemode creative @p");
+        server.runCommand("tp @p 7.5 " + (ground + 5) + " -3.5 -90 30");
+        server.runCommand("item replace entity @p weapon.mainhand with cheeky_monkeys:banana");
+        server.runOnServer(s -> {
+            monkeys(s).forEach(MonkeyEntity::discard);
+            MonkeyEntity monkey = ModEntities.MONKEY.get().create(s.overworld(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+            monkey.snapTo(-1.5, ground, 3.5, 0, 0);
+            s.overworld().addFreshEntity(monkey);
+        });
+
+        boolean climbing = false;
+        for (int tick = 0; tick < 600; tick++) {
+            Vec3 monkey = server.computeOnServer(s -> monkeys(s).getFirst().position());
+            if (!climbing && server.computeOnServer(s -> monkeys(s).getFirst().getState()) == MonkeyState.CLIMBING) {
+                climbing = true;
+                context.waitTicks(6);
+                Vec3 at = server.computeOnServer(s -> monkeys(s).getFirst().position());
+                server.runCommand("tp @p 7.5 " + (ground + 5) + " -3.5 facing " + at.x + " " + (at.y + 0.3) + " " + at.z);
+                context.waitTicks(2);
+                context.takeScreenshot("tree_6_climb_to_player");
+            }
+
+            if (monkey.y >= ground + 4.5 && monkey.distanceTo(new Vec3(7.5, ground + 5, -3.5)) < 2.5) {
+                server.runCommand("tp @p 7.5 " + (ground + 5) + " -3.5 facing " + monkey.x + " " + (monkey.y + 0.3) + " " + monkey.z);
+                context.waitTicks(10);
+                context.takeScreenshot("tree_7_reached_player");
+                server.runCommand("item replace entity @p weapon.mainhand with minecraft:air");
+                return;
+            }
+
+            context.waitTicks(1);
+        }
+
+        Vec3 monkey = server.computeOnServer(s -> monkeys(s).getFirst().position());
+        String details = server.computeOnServer(s -> {
+            MonkeyEntity m = monkeys(s).getFirst();
+            ServerPlayer p = s.getPlayerList().getPlayers().getFirst();
+            var route = me.teajay.cheeky.monkeys.entity.ai.TreeSpots.findClimb(s.overworld(), m.blockPosition(), 16, m.getRandom(), m.getVisualScale(), p.position());
+            return m.getState() + " at " + m.position() + "; player at " + p.position() + " onGround " + p.onGround() + " below " + s.overworld().getBlockState(p.blockPosition().below())
+                + " height " + me.teajay.cheeky.monkeys.entity.ai.TreeSpots.heightAboveGround(s.overworld(), p.blockPosition()) + " hand " + p.getMainHandItem()
+                + " route " + (route == null ? null : route.start() + " perches " + route.perches());
+        });
+        throw new AssertionError("The monkey never climbed up to the player; it's " + details);
     }
 
     /// A monkey that can't walk to where it wants to go leaps over the gap instead
@@ -227,7 +275,7 @@ public class MonkeyShowcaseClientGameTest implements FabricClientGameTest {
 
         String details = server.computeOnServer(s -> {
             MonkeyEntity monkey = monkeys(s).getFirst();
-            var route = me.teajay.cheeky.monkeys.entity.ai.TreeSpots.findClimb(s.overworld(), monkey.blockPosition(), 12, monkey.getRandom(), monkey.getVisualScale());
+            var route = me.teajay.cheeky.monkeys.entity.ai.TreeSpots.findClimb(s.overworld(), monkey.blockPosition(), 12, monkey.getRandom(), monkey.getVisualScale(), null);
             var path = monkey.getNavigation().getPath();
             return monkey.getState() + " at " + monkey.position() + ", onGround " + monkey.onGround() + ", requested " + monkey.isTreeClimbRequested()
                 + ", route " + (route == null ? null : route.start() + " " + route.path()) + ", path " + (path == null ? null : path.getTarget() + " done " + path.isDone() + " reach " + path.canReach());
