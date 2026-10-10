@@ -10,9 +10,9 @@ public final class ModWorldgen {
     public static final ResourceKey<PlacedFeature> BANANA_BUNCHES = ResourceKey.create(Registries.PLACED_FEATURE, CheekyMonkeys.id("banana_bunches"));
 
     /// Natural spawn settings, shared by the Fabric code and mirrored in the NeoForge biome modifier JSON
-    public static final int MONKEY_SPAWN_WEIGHT = 20;
-    public static final int MONKEY_MIN_GROUP = 2;
-    public static final int MONKEY_MAX_GROUP = 4;
+    public static final int MONKEY_SPAWN_WEIGHT = 60;
+    public static final int MONKEY_MIN_GROUP = 3;
+    public static final int MONKEY_MAX_GROUP = 5;
 
     private ModWorldgen() {
     }

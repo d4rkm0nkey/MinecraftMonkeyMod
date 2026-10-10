@@ -11,6 +11,7 @@ public final class MonkeyAnimations {
     public static final RawAnimation SLEEP = loop("sleep");
     public static final RawAnimation CLIMB = loop("climb");
     public static final RawAnimation HANG = loop("hang");
+    public static final RawAnimation SWING = loop("swing");
     public static final RawAnimation PERCH = loop("perch");
     public static final RawAnimation LEAP = RawAnimation.begin().thenPlayAndHold(prefixed("leap"));
     public static final RawAnimation DANCE = loop("dance");

@@ -8,7 +8,10 @@ import com.geckolib.animation.object.PlayState;
 import com.geckolib.animation.state.AnimationTest;
 import com.geckolib.constant.dataticket.DataTicket;
 import com.geckolib.util.GeckoLibUtil;
+import me.teajay.cheeky.monkeys.entity.ai.MonkeyHopGoal;
 import me.teajay.cheeky.monkeys.entity.ai.MonkeyIdleEmoteGoal;
+import me.teajay.cheeky.monkeys.entity.ai.MonkeyTreeGoal;
+import me.teajay.cheeky.monkeys.entity.ai.TreeSpots;
 import me.teajay.cheeky.monkeys.registry.ModEntities;
 import me.teajay.cheeky.monkeys.registry.ModSounds;
 import me.teajay.cheeky.monkeys.registry.ModTags;
@@ -18,6 +21,8 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -45,6 +50,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.pathfinder.Path;
+import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 public class MonkeyEntity extends TamableAnimal implements GeoEntity {
@@ -54,12 +61,19 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
     public static final DataTicket<MonkeyState> STATE_TICKET = DataTicket.create("cheeky_monkeys_state", MonkeyState.class);
     public static final DataTicket<Float> MOVE_SPEED_TICKET = DataTicket.create("cheeky_monkeys_move_speed", Float.class);
 
+    /// How big the model is drawn; the Blockbench model is human sized
+    public static final float MODEL_SCALE = 0.6F;
+    /// Babies are drawn this much smaller again. GeckoLib only applies the entity's scale attribute, not the baby age scale.
+    public static final float BABY_SCALE = 0.6F;
+
     private static final EntityDataAccessor<Byte> DATA_STATE = SynchedEntityData.defineId(MonkeyEntity.class, EntityDataSerializers.BYTE);
     /// Walk animation speed above which the monkey switches to its running gallop
     private static final float RUN_THRESHOLD = 0.55F;
     /// Ticks in the air before a jump or fall counts as a leap, so small steps don't flicker the pose
     private static final int LEAP_AIR_TICKS = 4;
     private static final double JUKEBOX_RANGE = 3.46;
+    private static final double LEAP_SPEED = 0.45;
+    private static final int GAP_LEAP_COOLDOWN = 20;
 
     private final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
     private int emoteTicks;
@@ -67,6 +81,20 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
     private int airTicks;
     private @Nullable BlockPos jukebox;
     private boolean dancing;
+    /// Set while a goal moves the monkey along a scripted path (climbing, swinging, leaping) or holds it in place (hanging).
+    /// Physics are off then: no gravity, no collisions, no pushing.
+    private boolean scriptedMovement;
+    /// Pose a goal wants shown instead of the one worked out from movement, like perching on a branch
+    private @Nullable MonkeyState posture;
+    private Vec3 glideFrom = Vec3.ZERO;
+    private Vec3 glideTo = Vec3.ZERO;
+    private double glideArc;
+    private int glideTick;
+    private int glideDuration;
+    private float glideYaw;
+    private @Nullable Runnable glideDone;
+    private int gapLeapCooldown;
+    private boolean treeClimbRequested;
 
     public MonkeyEntity(EntityType<? extends MonkeyEntity> type, Level level) {
         super(type, level);
@@ -98,16 +126,20 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
-        this.goalSelector.addGoal(1, new TamableAnimal.TamableAnimalPanicGoal(1.4));
-        this.goalSelector.addGoal(2, new SitWhenOrderedToGoal(this));
-        this.goalSelector.addGoal(3, new BreedGoal(this, 1.0));
-        this.goalSelector.addGoal(4, new TemptGoal(this, 1.1, this::isFood, false));
-        this.goalSelector.addGoal(5, new FollowOwnerGoal(this, 1.2, 8.0F, 2.0F));
-        this.goalSelector.addGoal(6, new FollowParentGoal(this, 1.1));
-        this.goalSelector.addGoal(7, new MonkeyIdleEmoteGoal(this));
-        this.goalSelector.addGoal(8, new WaterAvoidingRandomStrollGoal(this, 1.0));
-        this.goalSelector.addGoal(9, new LookAtPlayerGoal(this, Player.class, 8.0F));
-        this.goalSelector.addGoal(10, new RandomLookAroundGoal(this));
+        // Hurt monkeys flee up the nearest tree, or just run if there isn't one
+        this.goalSelector.addGoal(1, new MonkeyTreeGoal(this, true));
+        this.goalSelector.addGoal(2, new TamableAnimal.TamableAnimalPanicGoal(1.4));
+        this.goalSelector.addGoal(3, new SitWhenOrderedToGoal(this));
+        this.goalSelector.addGoal(4, new BreedGoal(this, 1.0));
+        this.goalSelector.addGoal(5, new TemptGoal(this, 1.1, this::isFood, false));
+        this.goalSelector.addGoal(6, new FollowOwnerGoal(this, 1.2, 8.0F, 2.0F));
+        this.goalSelector.addGoal(7, new FollowParentGoal(this, 1.1));
+        this.goalSelector.addGoal(8, new MonkeyTreeGoal(this, false));
+        this.goalSelector.addGoal(9, new MonkeyIdleEmoteGoal(this));
+        this.goalSelector.addGoal(9, new MonkeyHopGoal(this));
+        this.goalSelector.addGoal(10, new WaterAvoidingRandomStrollGoal(this, 1.0));
+        this.goalSelector.addGoal(11, new LookAtPlayerGoal(this, Player.class, 8.0F));
+        this.goalSelector.addGoal(12, new RandomLookAroundGoal(this));
     }
 
     public MonkeyState getState() {
@@ -118,6 +150,11 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
         if (this.getState() != state) {
             this.entityData.set(DATA_STATE, (byte)state.ordinal());
         }
+    }
+
+    /// How big the monkey is drawn compared to the Blockbench model
+    public float getVisualScale() {
+        return this.isBaby() ? MODEL_SCALE * BABY_SCALE : MODEL_SCALE;
     }
 
     public boolean isEmoting() {
@@ -141,6 +178,154 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
         this.eatingTicks = MonkeyEmote.EAT.durationTicks();
         this.playEmote(MonkeyEmote.EAT);
     }
+
+    // region Scripted movement
+
+    public boolean isScriptedMovement() {
+        return this.scriptedMovement;
+    }
+
+    public boolean isGliding() {
+        return this.glideTick < this.glideDuration;
+    }
+
+    public void setPosture(@Nullable MonkeyState posture) {
+        this.posture = posture;
+    }
+
+    /// Moves the monkey to `to` at `speed` blocks per tick, bulging `arc` blocks upwards on the way, facing `yaw` (or the
+    /// way it's going, if NaN), then runs `then`. Physics stay off afterwards until [#releaseScriptedMovement()].
+    public void glideTo(Vec3 to, double speed, MonkeyState pose, float yaw, double arc, @Nullable Runnable then) {
+        this.scriptedMovement = true;
+        this.posture = pose;
+        this.navigation.stop();
+        this.glideFrom = this.position();
+        this.glideTo = to;
+        this.glideArc = arc;
+        this.glideYaw = yaw;
+        this.glideTick = 0;
+        this.glideDuration = Math.max(2, Mth.ceil(this.glideFrom.distanceTo(to) / speed));
+        this.glideDone = then;
+    }
+
+    /// Leaps through the air to `to` and lands there with physics back on, then runs `then`
+    public void leapTo(Vec3 to, @Nullable Runnable then) {
+        this.playSound(ModSounds.MONKEY_AMBIENT.get(), 0.8F, this.getVoicePitch());
+        this.glideTo(to, LEAP_SPEED, MonkeyState.LEAPING, Float.NaN, TreeSpots.leapArc(this.position(), to), () -> {
+            this.releaseScriptedMovement();
+            if (then != null) {
+                then.run();
+            }
+        });
+    }
+
+    /// Holds the monkey still in the air in `pose`, like hanging from leaves
+    public void holdPose(MonkeyState pose) {
+        this.scriptedMovement = true;
+        this.posture = pose;
+        this.glideDuration = 0;
+        this.glideDone = null;
+    }
+
+    /// Hands the monkey back to physics wherever it is
+    public void releaseScriptedMovement() {
+        this.scriptedMovement = false;
+        this.posture = null;
+        this.glideDuration = 0;
+        this.glideDone = null;
+        this.setDeltaMovement(Vec3.ZERO);
+        this.resetFallDistance();
+    }
+
+    private void tickGlide() {
+        if (!this.isGliding()) {
+            return;
+        }
+
+        this.glideTick++;
+        Vec3 pos = TreeSpots.arcPosition(this.glideFrom, this.glideTo, this.glideArc, this.glideTick / (double)this.glideDuration);
+        Vec3 step = pos.subtract(this.position());
+        float yaw = this.glideYaw;
+        if (Float.isNaN(yaw)) {
+            yaw = step.horizontalDistanceSqr() > 1.0E-4 ? (float)(Mth.atan2(step.z, step.x) * Mth.RAD_TO_DEG) - 90.0F : this.getYRot();
+        }
+
+        this.setPos(pos);
+        this.setYRot(yaw);
+        this.setYBodyRot(yaw);
+        this.setYHeadRot(yaw);
+
+        // Rustle through the leaves
+        if (this.glideTick % 6 == 0) {
+            BlockState inside = this.level().getBlockState(BlockPos.containing(pos.add(0.0, this.getBbHeight(), 0.0)));
+            if (inside.is(BlockTags.LEAVES)) {
+                this.playSound(inside.getSoundType().getStepSound(), 0.3F, 1.1F);
+            }
+        }
+
+        if (this.glideTick >= this.glideDuration && this.glideDone != null) {
+            Runnable done = this.glideDone;
+            this.glideDone = null;
+            done.run();
+        }
+    }
+
+    @Override
+    public void travel(Vec3 input) {
+        if (this.scriptedMovement) {
+            this.resetFallDistance();
+            return;
+        }
+
+        super.travel(input);
+    }
+
+    @Override
+    public boolean isPushable() {
+        return !this.scriptedMovement && super.isPushable();
+    }
+
+    /// Leaps over a gap when the path the monkey is following ends short of where it wants to go
+    private void tryGapLeap() {
+        if (this.gapLeapCooldown > 0) {
+            this.gapLeapCooldown--;
+            return;
+        }
+
+        Path path = this.navigation.getPath();
+        // Only once the monkey has got as close as walking gets it
+        if (this.scriptedMovement || !this.onGround() || path == null || path.canReach() || !path.isDone()) {
+            return;
+        }
+
+        this.gapLeapCooldown = GAP_LEAP_COOLDOWN;
+        BlockPos landing = TreeSpots.findLeapToward(this.level(), this.position(), Vec3.atBottomCenterOf(path.getTarget()));
+        if (landing != null) {
+            this.leapTo(Vec3.atBottomCenterOf(landing), null);
+        }
+    }
+
+    /// Asks the monkey to climb the nearest tree as soon as it can
+    public void requestTreeClimb() {
+        this.treeClimbRequested = true;
+    }
+
+    public boolean isTreeClimbRequested() {
+        return this.treeClimbRequested;
+    }
+
+    public void clearTreeClimbRequest() {
+        this.treeClimbRequested = false;
+    }
+
+    @Override
+    protected void customServerAiStep(ServerLevel level) {
+        super.customServerAiStep(level);
+        this.tickGlide();
+        this.tryGapLeap();
+    }
+
+    // endregion
 
     @Override
     public void aiStep() {
@@ -170,11 +355,14 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
 
     private void updateState() {
         // Monkeys without AI have no physics, so they never touch the ground; don't leave them mid-leap forever
-        boolean airborne = !this.onGround() && !this.onClimbable() && !this.isInWater() && !this.isPassenger() && !this.isNoAi();
+        boolean airborne = !this.onGround() && !this.onClimbable() && !this.isInWater() && !this.isPassenger() && !this.isNoAi()
+            && !this.scriptedMovement;
         this.airTicks = airborne ? this.airTicks + 1 : 0;
 
         if (this.isInSittingPose()) {
             this.setState(this.level().isDarkOutside() ? MonkeyState.SLEEPING : MonkeyState.SITTING);
+        } else if (this.posture != null) {
+            this.setState(this.posture);
         } else if (this.onClimbable()) {
             this.setState(MonkeyState.CLIMBING);
         } else if (this.airTicks > LEAP_AIR_TICKS) {
@@ -319,6 +507,7 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
             case SLEEPING -> test.setAndContinue(MonkeyAnimations.SLEEP);
             case CLIMBING -> test.setAndContinue(MonkeyAnimations.CLIMB);
             case HANGING -> test.setAndContinue(MonkeyAnimations.HANG);
+            case SWINGING -> test.setAndContinue(MonkeyAnimations.SWING);
             case PERCHING -> test.setAndContinue(MonkeyAnimations.PERCH);
             case LEAPING -> test.setAndContinue(MonkeyAnimations.LEAP);
             case DANCING -> test.setAndContinue(MonkeyAnimations.DANCE);

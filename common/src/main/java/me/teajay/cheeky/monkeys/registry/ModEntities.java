@@ -21,8 +21,8 @@ public final class ModEntities {
                 Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                 MonkeyEntity::checkMonkeySpawnRules
             )
-            .sized(0.6F, 0.9F)
-            .eyeHeight(0.7F)
+            .sized(0.5F, 0.7F)
+            .eyeHeight(0.55F)
             .clientTrackingRange(10)
             .build(key)
     );

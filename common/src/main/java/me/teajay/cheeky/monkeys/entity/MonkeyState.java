@@ -8,6 +8,7 @@ public enum MonkeyState {
     SLEEPING,
     CLIMBING,
     HANGING,
+    SWINGING,
     PERCHING,
     LEAPING,
     DANCING;

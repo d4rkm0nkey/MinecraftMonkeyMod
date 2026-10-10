@@ -15,12 +15,14 @@ import net.minecraft.util.Mth;
 import org.jspecify.annotations.Nullable;
 
 public class MonkeyRenderer extends GeoEntityRenderer<MonkeyEntity, LivingEntityRenderState> {
-    // GeckoLib only applies the entity's scale attribute, not the baby age scale
-    private static final float BABY_SCALE = 0.6F;
+    // Extra bend per tail segment, so the tail curves up instead of sticking out straight
+    private static final float TAIL_CURL_BASE = 15.0F * Mth.DEG_TO_RAD;
+    private static final float TAIL_CURL_MIDDLE = 30.0F * Mth.DEG_TO_RAD;
+    private static final float TAIL_CURL_END = 35.0F * Mth.DEG_TO_RAD;
 
     public MonkeyRenderer(EntityRendererProvider.Context context) {
         super(context, new DefaultedEntityGeoModel<>(CheekyMonkeys.id("monkey")));
-        this.shadowRadius = 0.35F;
+        this.shadowRadius = 0.25F;
         this.withRenderLayer(new ItemInHandGeoLayer<>(context, this));
     }
 
@@ -32,8 +34,8 @@ public class MonkeyRenderer extends GeoEntityRenderer<MonkeyEntity, LivingEntity
 
     @Override
     public void scaleModelForRender(RenderPassInfo<LivingEntityRenderState> renderPassInfo, float widthScale, float heightScale) {
-        float ageScale = renderPassInfo.renderState().isBaby ? BABY_SCALE : 1.0F;
-        super.scaleModelForRender(renderPassInfo, widthScale * ageScale, heightScale * ageScale);
+        float scale = MonkeyEntity.MODEL_SCALE * (renderPassInfo.renderState().isBaby ? MonkeyEntity.BABY_SCALE : 1.0F);
+        super.scaleModelForRender(renderPassInfo, widthScale * scale, heightScale * scale);
     }
 
     @Override
@@ -56,7 +58,20 @@ public class MonkeyRenderer extends GeoEntityRenderer<MonkeyEntity, LivingEntity
         // A lazy tail sway so the monkey never looks frozen
         float swaySpeed = state == MonkeyState.SLEEPING ? 0.03F : 0.08F;
         float sway = Mth.sin(ageInTicks * swaySpeed) * 0.12F;
-        snapshots.get("Tail").ifPresent(tail -> tail.setRotY(tail.getRotY() + sway));
-        snapshots.get("TailEndBone").ifPresent(tail -> tail.setRotY(tail.getRotY() + sway * 1.5F));
+        // and a curl upwards along the tail, where the pose doesn't already drape or wrap it
+        float curl = switch (state) {
+            case IDLE, DANCING, LEAPING -> 1.0F;
+            case SITTING -> 0.5F;
+            default -> 0.0F;
+        };
+        snapshots.get("Tail").ifPresent(tail -> {
+            tail.setRotY(tail.getRotY() + sway);
+            tail.setRotX(tail.getRotX() - curl * TAIL_CURL_BASE);
+        });
+        snapshots.get("TailBone").ifPresent(tail -> tail.setRotX(tail.getRotX() - curl * TAIL_CURL_MIDDLE));
+        snapshots.get("TailEndBone").ifPresent(tail -> {
+            tail.setRotY(tail.getRotY() + sway * 1.5F);
+            tail.setRotX(tail.getRotX() - curl * TAIL_CURL_END);
+        });
     }
 }

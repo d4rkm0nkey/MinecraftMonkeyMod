@@ -6,10 +6,10 @@
       "type": "cheeky_monkeys:monkey",
       "count": {
         "type": "minecraft:uniform",
-        "min_inclusive": 2,
-        "max_inclusive": 4
+        "min_inclusive": 3,
+        "max_inclusive": 5
       },
-      "weight": 20
+      "weight": 60
     }
   ]
 }

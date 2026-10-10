@@ -20,6 +20,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 /// Lines monkeys up in front of the camera in their different states and emotes and takes screenshots,
 /// so animations and rendering can be checked by eye. Run with `./gradlew :fabric:runClientGameTest`.
@@ -97,7 +98,141 @@ public class MonkeyShowcaseClientGameTest implements FabricClientGameTest {
             });
             context.waitTicks(9);
             context.takeScreenshot("monkeys_moving");
+
+            context.getInput().pressKey(options -> options.keyToggleGui);
+            treeClimbing(context, server, ground);
+            server.runCommand("gamemode survival @p");
+            gapLeap(context, server, ground);
         }
+    }
+
+    /// Up the trunk, swinging along under the canopy, up the side of the leaves, sitting on top and leaping to the next tree
+    private static void treeClimbing(ClientGameTestContext context, TestServerContext server, int ground) {
+        server.runCommand("fill -8 " + ground + " -10 12 " + (ground + 8) + " 0 minecraft:air");
+        for (int x : new int[]{0, 7}) {
+            server.runCommand("fill " + x + " " + ground + " -4 " + x + " " + (ground + 4) + " -4 minecraft:oak_log");
+            server.runCommand("fill " + (x - 2) + " " + (ground + 3) + " -6 " + (x + 2) + " " + (ground + 4) + " -2 minecraft:oak_leaves[persistent=true] keep");
+        }
+
+        server.runCommand("gamemode spectator @p");
+        camera(server, 3, ground + 1, 1, 180, -25);
+        server.runOnServer(s -> {
+            monkeys(s).forEach(MonkeyEntity::discard);
+            MonkeyEntity monkey = ModEntities.MONKEY.get().create(s.overworld(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+            monkey.snapTo(2.5, ground, 0.5, 180, 0);
+            s.overworld().addFreshEntity(monkey);
+            monkey.requestTreeClimb();
+        });
+
+        waitForState(context, server, MonkeyState.CLIMBING, 200);
+        context.waitTicks(8);
+        lookAtMonkey(context, server);
+        context.takeScreenshot("tree_1_climb_trunk");
+        waitForState(context, server, MonkeyState.SWINGING, 200);
+        context.waitTicks(6);
+        lookAtMonkey(context, server);
+        context.takeScreenshot("tree_2_swing");
+        waitForState(context, server, MonkeyState.CLIMBING, 200);
+        context.waitTicks(8);
+        lookAtMonkey(context, server);
+        context.takeScreenshot("tree_3_climb_leaves");
+        waitForState(context, server, MonkeyState.PERCHING, 200);
+        context.waitTicks(10);
+        lookAtMonkey(context, server);
+        context.takeScreenshot("tree_4_perch");
+
+        BlockPos perch = server.computeOnServer(s -> monkeys(s).getFirst().blockPosition());
+        if (perch.getY() != ground + 5) {
+            throw new AssertionError("Expected the monkey on top of the canopy at y " + (ground + 5) + ", but it's at " + perch);
+        }
+
+        // Over to the other tree
+        double targetX = perch.getX() < 4 ? 6.5 : 1.5;
+        server.runOnServer(s -> monkeys(s).getFirst().leapTo(new Vec3(targetX, ground + 5, -3.5), null));
+        context.waitTicks(6);
+        context.takeScreenshot("tree_5_leap");
+        for (int tick = 0; tick < 40 && server.computeOnServer(s -> monkeys(s).getFirst().isGliding()); tick++) {
+            context.waitTicks(1);
+        }
+
+        Vec3 landed = server.computeOnServer(s -> monkeys(s).getFirst().position());
+        if (Math.abs(landed.x - targetX) > 0.5 || Math.abs(landed.y - (ground + 5)) > 0.1) {
+            throw new AssertionError("Expected the monkey to land on the other tree at x " + targetX + ", but it's at " + landed);
+        }
+    }
+
+    /// A monkey that can't walk to where it wants to go leaps over the gap instead
+    private static void gapLeap(ClientGameTestContext context, TestServerContext server, int ground) {
+        int top = ground + 4;
+        server.runCommand("fill -8 " + ground + " -10 12 " + (ground + 8) + " 0 minecraft:air");
+        server.runCommand("fill -3 " + ground + " 0 3 " + (top - 1) + " 2 minecraft:stone");
+        server.runCommand("fill -3 " + ground + " -7 3 " + (top - 1) + " -4 minecraft:stone");
+        camera(server, 7, top + 2, -2, 90, 25);
+        server.runOnServer(s -> {
+            monkeys(s).forEach(MonkeyEntity::discard);
+            MonkeyEntity monkey = ModEntities.MONKEY.get().create(s.overworld(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+            monkey.snapTo(0.5, top, 1.5, 180, 0);
+            s.overworld().addFreshEntity(monkey);
+        });
+
+        for (int tick = 0; tick < 300; tick++) {
+            MonkeyState state = server.computeOnServer(s -> {
+                MonkeyEntity monkey = monkeys(s).getFirst();
+                if (monkey.getNavigation().getPath() == null || !monkey.getNavigation().getPath().getTarget().equals(new BlockPos(0, top, -6))) {
+                    monkey.getNavigation().moveTo(0.5, top, -5.5, 1.0);
+                }
+
+                return monkey.getState();
+            });
+            if (state == MonkeyState.LEAPING) {
+                break;
+            }
+
+            context.waitTicks(1);
+        }
+
+        context.waitTicks(4);
+        context.takeScreenshot("gap_leap");
+        for (int tick = 0; tick < 40 && server.computeOnServer(s -> monkeys(s).getFirst().isGliding()); tick++) {
+            context.waitTicks(1);
+        }
+
+        Vec3 landed = server.computeOnServer(s -> monkeys(s).getFirst().position());
+        if (landed.z > -3.0 || landed.y < top) {
+            throw new AssertionError("Expected the monkey to have leapt over the gap, but it's at " + landed);
+        }
+    }
+
+    /// Moves the (spectating) player a few blocks away from the monkey, looking at it
+    private static void lookAtMonkey(ClientGameTestContext context, TestServerContext server) {
+        Vec3 monkey = server.computeOnServer(s -> monkeys(s).getFirst().position());
+        server.runCommand("tp @p " + (monkey.x + 2.5) + " " + (monkey.y + 0.3) + " " + (monkey.z + 3.0) + " facing " + monkey.x + " " + (monkey.y + 0.4) + " " + monkey.z);
+        context.waitTicks(2);
+    }
+
+    /// Puts the player on an invisible block at the given spot, looking the given way
+    private static void camera(TestServerContext server, int x, int y, int z, int yaw, int pitch) {
+        server.runCommand("setblock " + x + " " + (y - 1) + " " + z + " minecraft:barrier");
+        server.runCommand("tp @p " + (x + 0.5) + " " + y + " " + (z + 0.5) + " " + yaw + " " + pitch);
+    }
+
+    private static void waitForState(ClientGameTestContext context, TestServerContext server, MonkeyState state, int timeout) {
+        for (int tick = 0; tick < timeout; tick++) {
+            if (server.computeOnServer(s -> monkeys(s).getFirst().getState()) == state) {
+                return;
+            }
+
+            context.waitTicks(1);
+        }
+
+        String details = server.computeOnServer(s -> {
+            MonkeyEntity monkey = monkeys(s).getFirst();
+            var route = me.teajay.cheeky.monkeys.entity.ai.TreeSpots.findClimb(s.overworld(), monkey.blockPosition(), 12, monkey.getRandom(), monkey.getVisualScale());
+            var path = monkey.getNavigation().getPath();
+            return monkey.getState() + " at " + monkey.position() + ", onGround " + monkey.onGround() + ", requested " + monkey.isTreeClimbRequested()
+                + ", route " + (route == null ? null : route.start() + " " + route.path()) + ", path " + (path == null ? null : path.getTarget() + " done " + path.isDone() + " reach " + path.canReach());
+        });
+        throw new AssertionError("The monkey never got to " + state + "; it's " + details);
     }
 
     private static void spawnLineup(TestServerContext server, BiConsumer<List<MonkeyEntity>, ServerPlayer> setup) {
