@@ -11,6 +11,9 @@ Monkeys and bananas for your jungles, on Fabric and NeoForge.
 - **Taming:** feed a wild monkey bananas until it trusts you. Bananas also make monkeys fall in love, so wild troops can be bred.
 - **Pets:** tamed monkeys follow you and sit on command. They eat from your hand, cheer when tamed and dance next to a playing jukebox.
 - **Up in the trees:** monkeys climb up trunks, swing hand over hand along under the canopy, climb up the side of the leaves and sit on top. They leap from tree to tree, hang from the leaves and climb or jump back down. A hurt monkey flees up the nearest tree, and if you stand in a tree holding a banana, monkeys climb up to you.
+- **Banana thieves:** throw a banana and the monkeys race for it, grab it and run off to eat it in peace.
+- **Pickpockets:** wild monkeys sneak up behind you and steal from your pockets, then run up a tree with the loot. Catch them looking and they pretend nothing happened. To get your things back, give the thief a smack or offer it a banana; a monkey always drops what it stole when it dies.
+- **Troops:** wild monkeys stick together, and when one gets hurt it screeches and the whole troop scatters up the trees.
 - **Leaping:** monkeys jump over gaps they can't walk around, and sometimes take a big leap forward just for fun.
 - Monkeys are built for falling out of trees, so they take only a little fall damage.
 

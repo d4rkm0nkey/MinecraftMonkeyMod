@@ -16,8 +16,11 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -104,6 +107,8 @@ public class MonkeyShowcaseClientGameTest implements FabricClientGameTest {
             climbToPlayer(context, server, ground);
             server.runCommand("gamemode survival @p");
             gapLeap(context, server, ground);
+            thrownBanana(context, server, ground);
+            pickpocket(context, server, ground);
         }
     }
 
@@ -167,6 +172,11 @@ public class MonkeyShowcaseClientGameTest implements FabricClientGameTest {
         server.runCommand("gamemode creative @p");
         server.runCommand("tp @p 7.5 " + (ground + 5) + " -3.5 -90 30");
         server.runCommand("item replace entity @p weapon.mainhand with cheeky_monkeys:banana");
+        server.runOnServer(s -> {
+            ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
+            player.getAbilities().flying = false;
+            player.onUpdateAbilities();
+        });
         server.runOnServer(s -> {
             monkeys(s).forEach(MonkeyEntity::discard);
             MonkeyEntity monkey = ModEntities.MONKEY.get().create(s.overworld(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
@@ -256,6 +266,109 @@ public class MonkeyShowcaseClientGameTest implements FabricClientGameTest {
         Vec3 monkey = server.computeOnServer(s -> monkeys(s).getFirst().position());
         server.runCommand("tp @p " + (monkey.x + 2.5) + " " + (monkey.y + 0.3) + " " + (monkey.z + 3.0) + " facing " + monkey.x + " " + (monkey.y + 0.4) + " " + monkey.z);
         context.waitTicks(2);
+    }
+
+    /// A wild monkey races for a thrown banana, grabs one and runs off to eat it
+    private static void thrownBanana(ClientGameTestContext context, TestServerContext server, int ground) {
+        server.runCommand("fill -8 " + ground + " 2 8 " + (ground + 8) + " 16 minecraft:air");
+        server.runCommand("tp @p 0.5 " + ground + " 13.5 180 25");
+        MonkeyEntity spawned = server.computeOnServer(s -> {
+            monkeys(s).forEach(MonkeyEntity::discard);
+            MonkeyEntity monkey = ModEntities.MONKEY.get().create(s.overworld(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+            monkey.snapTo(-4.5, ground, 4.5, 0, 0);
+            s.overworld().addFreshEntity(monkey);
+            ItemEntity bananas = new ItemEntity(s.overworld(), 0.5, ground + 0.2, 8.5, new ItemStack(ModItems.BANANA.get(), 3));
+            bananas.setThrower(s.getPlayerList().getPlayers().getFirst());
+            s.overworld().addFreshEntity(bananas);
+            return monkey;
+        });
+
+        waitUntil(context, server, "the monkey grabs a banana", 200, s -> spawned.getMainHandItem().is(ModItems.BANANA.get()));
+        context.waitTicks(3);
+        context.takeScreenshot("banana_grab");
+        int left = server.computeOnServer(s -> s.overworld().getEntitiesOfClass(ItemEntity.class, new AABB(-10, ground - 2, 0, 10, ground + 4, 16))
+            .stream().mapToInt(item -> item.getItem().getCount()).sum());
+        if (left != 2) {
+            String items = server.computeOnServer(s -> s.overworld().getEntitiesOfClass(ItemEntity.class, new AABB(-30, ground - 5, -30, 30, ground + 10, 30))
+                .stream().map(item -> item.getItem() + " at " + item.position()).toList()
+                + " monkeys " + s.overworld().getEntitiesOfClass(MonkeyEntity.class, new AABB(-100, -100, -100, 100, 100, 100)).stream().map(m -> m.position() + " " + m.getMainHandItem()).toList()
+                + " player bananas " + s.getPlayerList().getPlayers().getFirst().getInventory().countItem(ModItems.BANANA.get()));
+            throw new AssertionError("Expected the monkey to take exactly one banana, but " + left + " are left: " + items + ", monkey holds " + spawned.getMainHandItem());
+        }
+
+        waitUntil(context, server, "the monkey eats the banana", 400, s -> spawned.isEating());
+        context.waitTicks(10);
+        lookAtMonkey(context, server);
+        context.takeScreenshot("banana_eat");
+        server.runCommand("kill @e[type=minecraft:item]");
+    }
+
+    /// A wild monkey sneaks up behind the player and steals from their pockets; a smack or a banana gets the loot back
+    private static void pickpocket(ClientGameTestContext context, TestServerContext server, int ground) {
+        server.runCommand("clear @p");
+        server.runCommand("give @p minecraft:diamond 5");
+        // Looking away from the monkey
+        server.runCommand("tp @p 0.5 " + ground + " 12.5 0 0");
+        MonkeyEntity thief = server.computeOnServer(s -> {
+            monkeys(s).forEach(MonkeyEntity::discard);
+            MonkeyEntity monkey = ModEntities.MONKEY.get().create(s.overworld(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+            monkey.snapTo(0.5, ground, 5.5, 0, 0);
+            s.overworld().addFreshEntity(monkey);
+            monkey.setTheftCooldown(0);
+            return monkey;
+        });
+
+        waitUntil(context, server, "the monkey steals something", 500, s -> thief.hasLoot());
+        context.waitTicks(4);
+        lookAtMonkey(context, server);
+        context.takeScreenshot("pickpocket");
+        int diamonds = server.computeOnServer(s -> s.getPlayerList().getPlayers().getFirst().getInventory().countItem(Items.DIAMOND));
+        if (diamonds >= 5 || !thief.getMainHandItem().is(Items.DIAMOND)) {
+            throw new AssertionError("Expected the monkey to hold stolen diamonds, but the player still has " + diamonds + " and the monkey " + thief.getMainHandItem());
+        }
+
+        // A smack makes it drop the loot
+        server.runOnServer(s -> {
+            ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
+            thief.hurtServer(s.overworld(), s.overworld().damageSources().playerAttack(player), 1.0F);
+        });
+        context.waitTicks(2);
+        boolean dropped = server.computeOnServer(s -> !thief.hasLoot() && !s.overworld().getEntitiesOfClass(ItemEntity.class, thief.getBoundingBox().inflate(4.0),
+            item -> item.getItem().is(Items.DIAMOND)).isEmpty());
+        if (!dropped) {
+            throw new AssertionError("Expected the monkey to drop the diamonds when hit");
+        }
+
+        // So does a banana
+        server.runOnServer(s -> {
+            ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
+            thief.takeLoot(new ItemStack(Items.EMERALD));
+            player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.BANANA.get()));
+            thief.mobInteract(player, InteractionHand.MAIN_HAND);
+        });
+        if (server.computeOnServer(s -> thief.hasLoot() || !thief.isEating())) {
+            throw new AssertionError("Expected the monkey to swap its loot for the banana");
+        }
+
+        server.runCommand("kill @e[type=minecraft:item]");
+    }
+
+    private static void waitUntil(ClientGameTestContext context, TestServerContext server, String what, int timeout, java.util.function.Predicate<MinecraftServer> condition) {
+        for (int tick = 0; tick < timeout; tick++) {
+            if (server.computeOnServer(condition::test)) {
+                return;
+            }
+
+            context.waitTicks(1);
+        }
+
+        String state = server.computeOnServer(s -> {
+            ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
+            return monkeys(s).stream().map(m -> m.getState() + " at " + m.position() + " holding " + m.getMainHandItem() + " runningOff " + m.isRunningOff()
+                + " canPickpocket " + m.canPickpocket() + " path " + (m.getNavigation().getPath() == null ? null : m.getNavigation().getPath().getTarget())).toList()
+                + "; player at " + player.position() + " " + player.gameMode() + " look " + player.getLookAngle() + " inventory " + player.getInventory().getNonEquipmentItems().getFirst();
+        });
+        throw new AssertionError("Timed out waiting until " + what + ": " + state);
     }
 
     /// Puts the player on an invisible block at the given spot, looking the given way

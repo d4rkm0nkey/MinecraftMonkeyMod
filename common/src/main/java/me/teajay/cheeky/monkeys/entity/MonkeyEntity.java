@@ -8,9 +8,13 @@ import com.geckolib.animation.object.PlayState;
 import com.geckolib.animation.state.AnimationTest;
 import com.geckolib.constant.dataticket.DataTicket;
 import com.geckolib.util.GeckoLibUtil;
+import me.teajay.cheeky.monkeys.entity.ai.MonkeyGrabFoodGoal;
 import me.teajay.cheeky.monkeys.entity.ai.MonkeyHopGoal;
 import me.teajay.cheeky.monkeys.entity.ai.MonkeyIdleEmoteGoal;
+import me.teajay.cheeky.monkeys.entity.ai.MonkeyPickpocketGoal;
+import me.teajay.cheeky.monkeys.entity.ai.MonkeyRunOffGoal;
 import me.teajay.cheeky.monkeys.entity.ai.MonkeyTreeGoal;
+import me.teajay.cheeky.monkeys.entity.ai.MonkeyTroopGoal;
 import me.teajay.cheeky.monkeys.entity.ai.TreeSpots;
 import me.teajay.cheeky.monkeys.registry.ModEntities;
 import me.teajay.cheeky.monkeys.registry.ModSounds;
@@ -29,9 +33,11 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.AgeableMob;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -45,6 +51,7 @@ import net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal;
 import net.minecraft.world.entity.ai.goal.TemptGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 import net.minecraft.world.entity.animal.Animal;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -75,6 +82,8 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
     private static final double JUKEBOX_RANGE = 3.46;
     private static final double LEAP_SPEED = 0.45;
     private static final int GAP_LEAP_COOLDOWN = 20;
+    private static final int THEFT_COOLDOWN_MIN = 2400;
+    private static final double ALARM_RANGE = 16.0;
 
     private final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
     private int emoteTicks;
@@ -95,6 +104,11 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
     private float glideYaw;
     private @Nullable Runnable glideDone;
     private int gapLeapCooldown;
+    /// Something to get away from, like the player a monkey just robbed, and for how much longer
+    private @Nullable Entity runOffFrom;
+    private int runOffTicks;
+    /// Ticks until this monkey feels like picking a pocket again
+    private int theftCooldown = THEFT_COOLDOWN_MIN + this.random.nextInt(THEFT_COOLDOWN_MIN);
     private boolean treeClimbRequested;
 
     public MonkeyEntity(EntityType<? extends MonkeyEntity> type, Level level) {
@@ -127,22 +141,26 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
-        // Hurt monkeys flee up the nearest tree, or just run if there isn't one
+        // Hurt or spooked monkeys flee up the nearest tree, or just run if there isn't one
         this.goalSelector.addGoal(1, new MonkeyTreeGoal(this, MonkeyTreeGoal.Mode.FLEE));
         this.goalSelector.addGoal(2, new TamableAnimal.TamableAnimalPanicGoal(1.4));
+        this.goalSelector.addGoal(2, new MonkeyRunOffGoal(this));
         this.goalSelector.addGoal(3, new SitWhenOrderedToGoal(this));
         this.goalSelector.addGoal(4, new BreedGoal(this, 1.0));
+        this.goalSelector.addGoal(5, new MonkeyGrabFoodGoal(this));
         // A player up a tree with a banana gets climbed to; one on the ground just gets followed
-        this.goalSelector.addGoal(5, new MonkeyTreeGoal(this, MonkeyTreeGoal.Mode.TEMPTED));
-        this.goalSelector.addGoal(6, new TemptGoal(this, 1.1, this::isFood, false));
-        this.goalSelector.addGoal(7, new FollowOwnerGoal(this, 1.2, 8.0F, 2.0F));
-        this.goalSelector.addGoal(8, new FollowParentGoal(this, 1.1));
-        this.goalSelector.addGoal(9, new MonkeyTreeGoal(this, MonkeyTreeGoal.Mode.LEISURE));
-        this.goalSelector.addGoal(10, new MonkeyIdleEmoteGoal(this));
-        this.goalSelector.addGoal(10, new MonkeyHopGoal(this));
-        this.goalSelector.addGoal(11, new WaterAvoidingRandomStrollGoal(this, 1.0));
-        this.goalSelector.addGoal(12, new LookAtPlayerGoal(this, Player.class, 8.0F));
-        this.goalSelector.addGoal(13, new RandomLookAroundGoal(this));
+        this.goalSelector.addGoal(6, new MonkeyTreeGoal(this, MonkeyTreeGoal.Mode.TEMPTED));
+        this.goalSelector.addGoal(7, new TemptGoal(this, 1.1, this::isFood, false));
+        this.goalSelector.addGoal(8, new FollowOwnerGoal(this, 1.2, 8.0F, 2.0F));
+        this.goalSelector.addGoal(9, new FollowParentGoal(this, 1.1));
+        this.goalSelector.addGoal(10, new MonkeyPickpocketGoal(this));
+        this.goalSelector.addGoal(11, new MonkeyTreeGoal(this, MonkeyTreeGoal.Mode.LEISURE));
+        this.goalSelector.addGoal(12, new MonkeyTroopGoal(this));
+        this.goalSelector.addGoal(13, new MonkeyIdleEmoteGoal(this));
+        this.goalSelector.addGoal(13, new MonkeyHopGoal(this));
+        this.goalSelector.addGoal(14, new WaterAvoidingRandomStrollGoal(this, 1.0));
+        this.goalSelector.addGoal(15, new LookAtPlayerGoal(this, Player.class, 8.0F));
+        this.goalSelector.addGoal(16, new RandomLookAroundGoal(this));
     }
 
     public MonkeyState getState() {
@@ -180,6 +198,74 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
         this.setItemSlot(EquipmentSlot.MAINHAND, food.copyWithCount(1));
         this.eatingTicks = MonkeyEmote.EAT.durationTicks();
         this.playEmote(MonkeyEmote.EAT);
+    }
+
+    public boolean isEating() {
+        return this.eatingTicks > 0;
+    }
+
+    /// Something in hand that isn't food: a stolen item. It always drops when the monkey dies.
+    public boolean hasLoot() {
+        ItemStack held = this.getMainHandItem();
+        return !held.isEmpty() && !this.isFood(held);
+    }
+
+    /// Takes `item` in hand as loot, which is never lost: the monkey stays around and always drops it when it dies
+    public void takeLoot(ItemStack item) {
+        this.setItemSlot(EquipmentSlot.MAINHAND, item);
+        this.setPersistenceRequired();
+    }
+
+    @Override
+    protected void dropEquipment(ServerLevel level) {
+        if (this.hasLoot()) {
+            this.spawnAtLocation(level, this.getMainHandItem().copy());
+            this.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+        }
+
+        super.dropEquipment(level);
+    }
+
+    /// Drops whatever the monkey is holding, towards `towards` if given
+    public void dropHeldItem(@Nullable Entity towards) {
+        if (!(this.level() instanceof ServerLevel level) || this.getMainHandItem().isEmpty()) {
+            return;
+        }
+
+        ItemEntity dropped = this.spawnAtLocation(level, this.getMainHandItem().copy(), 0.5F);
+        if (dropped != null && towards != null) {
+            dropped.setDeltaMovement(towards.position().subtract(this.position()).normalize().scale(0.25).add(0.0, 0.25, 0.0));
+        }
+
+        this.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+        this.eatingTicks = 0;
+    }
+
+    /// Makes the monkey run away from `threat` for `ticks`, up a tree if there's one close by
+    public void runOffFrom(@Nullable Entity threat, int ticks) {
+        this.runOffFrom = threat;
+        this.runOffTicks = threat == null ? 0 : ticks;
+    }
+
+    public @Nullable Entity getRunOffFrom() {
+        return this.runOffTicks > 0 && this.runOffFrom != null && this.runOffFrom.isAlive() ? this.runOffFrom : null;
+    }
+
+    public boolean isRunningOff() {
+        return this.getRunOffFrom() != null;
+    }
+
+    public boolean canPickpocket() {
+        return this.theftCooldown <= 0;
+    }
+
+    /// Starts the wait until the next theft; `0` lets the monkey try right away
+    public void setTheftCooldown(int ticks) {
+        this.theftCooldown = ticks;
+    }
+
+    public void resetTheftCooldown() {
+        this.theftCooldown = THEFT_COOLDOWN_MIN + this.random.nextInt(THEFT_COOLDOWN_MIN * 2);
     }
 
     // region Scripted movement
@@ -384,8 +470,20 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
             this.emoteTicks--;
         }
 
+        if (this.runOffTicks > 0) {
+            this.runOffTicks--;
+        }
+
+        if (this.theftCooldown > 0) {
+            this.theftCooldown--;
+        }
+
         if (this.eatingTicks > 0 && --this.eatingTicks == 0) {
             this.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+            this.heal(2.0F);
+        } else if (this.eatingTicks == 0 && this.isFood(this.getMainHandItem()) && !this.isRunningOff() && !this.scriptedMovement) {
+            // Got away with a banana; time to eat it
+            this.startEating(this.getMainHandItem());
         }
     }
 
@@ -407,6 +505,33 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
             this.setState(MonkeyState.DANCING);
         } else {
             this.setState(MonkeyState.IDLE);
+        }
+    }
+
+    @Override
+    public boolean hurtServer(ServerLevel level, DamageSource source, float damage) {
+        boolean hurt = super.hurtServer(level, source, damage);
+        if (hurt && source.getEntity() instanceof LivingEntity attacker) {
+            // A smack makes a thief let go of what it took
+            if (this.hasLoot() && attacker instanceof Player) {
+                this.dropHeldItem(attacker);
+            }
+
+            if (!this.isTame()) {
+                this.raiseAlarm(level, attacker);
+            }
+        }
+
+        return hurt;
+    }
+
+    /// Screeches so the rest of the troop scatters up the trees too
+    private void raiseAlarm(ServerLevel level, LivingEntity threat) {
+        this.playSound(ModSounds.MONKEY_HURT.get(), 1.2F, this.getVoicePitch() * 1.3F);
+        for (MonkeyEntity other : level.getEntitiesOfClass(MonkeyEntity.class, this.getBoundingBox().inflate(ALARM_RANGE))) {
+            if (other != this && !other.isTame()) {
+                other.runOffFrom(threat, 100 + other.random.nextInt(60));
+            }
         }
     }
 
@@ -444,6 +569,12 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
             }
         } else if (this.isFood(itemStack)) {
             if (!this.level().isClientSide()) {
+                // Swap the loot for a banana
+                if (this.hasLoot()) {
+                    this.dropHeldItem(player);
+                    this.resetTheftCooldown();
+                }
+
                 this.startEating(itemStack);
                 this.usePlayerItem(player, hand, itemStack);
                 this.tryToTame(player);

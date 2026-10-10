@@ -9,5 +9,6 @@
   "subtitles.cheeky_monkeys.entity.monkey.eat": "Affe mampft",
   "subtitles.cheeky_monkeys.entity.monkey.happy": "Affe jubelt",
   "subtitles.cheeky_monkeys.entity.monkey.chest_pound": "Affe trommelt auf die Brust",
-  "tag.item.cheeky_monkeys.monkey_food": "Affenfutter"
+  "tag.item.cheeky_monkeys.monkey_food": "Affenfutter",
+  "message.cheeky_monkeys.stolen": "Ein Affe hat dir %s geklaut!"
 }

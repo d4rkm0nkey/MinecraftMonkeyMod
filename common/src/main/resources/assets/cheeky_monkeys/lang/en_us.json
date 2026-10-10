@@ -9,5 +9,6 @@
   "subtitles.cheeky_monkeys.entity.monkey.eat": "Monkey munches",
   "subtitles.cheeky_monkeys.entity.monkey.happy": "Monkey cheers",
   "subtitles.cheeky_monkeys.entity.monkey.chest_pound": "Monkey pounds its chest",
-  "tag.item.cheeky_monkeys.monkey_food": "Monkey Food"
+  "tag.item.cheeky_monkeys.monkey_food": "Monkey Food",
+  "message.cheeky_monkeys.stolen": "A monkey stole your %s!"
 }

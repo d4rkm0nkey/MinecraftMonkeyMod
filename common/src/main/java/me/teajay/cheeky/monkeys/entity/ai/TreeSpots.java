@@ -25,6 +25,10 @@ public final class TreeSpots {
     public static final double CLIMB_SPEED = 0.15;
     public static final double SWING_SPEED = 0.1;
     private static final double STEP_SPEED = 0.1;
+    /// Monkeys jump onto a trunk and off it again rather than walking into it, landing this high up
+    public static final double TRUNK_JUMP_HEIGHT = 0.8;
+    private static final double TRUNK_JUMP_SPEED = 0.3;
+    private static final double TRUNK_JUMP_ARC = 0.4;
     /// A perch needs at least this much space below it to be worth climbing to
     private static final int MIN_PERCH_HEIGHT = 3;
     /// Lowest leaves a monkey will hang from
@@ -41,20 +45,26 @@ public final class TreeSpots {
     private TreeSpots() {
     }
 
-    /// One leg of a route: glide to `pos` in `pose`, facing `yaw` (or the way it's going, if NaN), at `speed` blocks per tick
-    public record Waypoint(Vec3 pos, MonkeyState pose, float yaw, double speed) {
+    /// One leg of a route: glide to `pos` in `pose`, facing `yaw` (or the way it's going, if NaN), at `speed` blocks per tick,
+    /// bulging `arc` blocks upwards on the way
+    public record Waypoint(Vec3 pos, MonkeyState pose, float yaw, double speed, double arc) {
+        public Waypoint(Vec3 pos, MonkeyState pose, float yaw, double speed) {
+            this(pos, pose, yaw, speed, 0.0);
+        }
     }
 
-    /// A way up a tree from `start` at the trunk's foot, ending on top of the canopy if `perches`, or hanging below it otherwise
-    public record ClimbRoute(BlockPos start, List<Waypoint> path, boolean perches) {
-        /// The same way back down: each leg reversed, keeping the pose and speed it was climbed with
+    /// A way up a tree from `start` at the trunk's foot, ending on top of the canopy if `perches`, or hanging below it otherwise.
+    /// The first leg is the jump onto the trunk on `trunkSide`; `landing` is where the monkey hops off to on the way back down.
+    public record ClimbRoute(BlockPos start, Direction trunkSide, List<Waypoint> path, boolean perches, Vec3 landing) {
+        /// The same way back down: each leg reversed, keeping the pose and speed it was climbed with, then a hop off the trunk
         public List<Waypoint> reversed() {
             List<Waypoint> back = new ArrayList<>();
             for (int i = this.path.size() - 1; i > 0; i--) {
                 Waypoint leg = this.path.get(i);
-                back.add(new Waypoint(this.path.get(i - 1).pos(), leg.pose(), leg.yaw(), leg.speed()));
+                back.add(new Waypoint(this.path.get(i - 1).pos(), leg.pose(), leg.yaw(), leg.speed(), leg.arc()));
             }
 
+            back.add(new Waypoint(this.landing, MonkeyState.LEAPING, Float.NaN, TRUNK_JUMP_SPEED, TRUNK_JUMP_ARC));
             return back;
         }
     }
@@ -192,7 +202,7 @@ public final class TreeSpots {
         float trunkYaw = trunkSide.toYRot();
 
         List<Waypoint> path = new ArrayList<>();
-        path.add(new Waypoint(hugging(start, trunkSide, hug, 0.0), MonkeyState.CLIMBING, trunkYaw, STEP_SPEED));
+        path.add(new Waypoint(hugging(start, trunkSide, hug, TRUNK_JUMP_HEIGHT), MonkeyState.LEAPING, trunkYaw, TRUNK_JUMP_SPEED, TRUNK_JUMP_ARC));
         path.add(new Waypoint(hugging(underCanopy, trunkSide, hug, hangDrop), MonkeyState.CLIMBING, trunkYaw, CLIMB_SPEED));
 
         // Swing along under the canopy, breadth first, until there's a way up its side
@@ -229,7 +239,7 @@ public final class TreeSpots {
                     path.add(new Waypoint(hugging(next, direction.getOpposite(), hug, 0.2), MonkeyState.CLIMBING, leavesYaw, STEP_SPEED));
                     path.add(new Waypoint(hugging(next, direction.getOpposite(), hug, perch.getY() - next.getY()), MonkeyState.CLIMBING, leavesYaw, CLIMB_SPEED));
                     path.add(new Waypoint(Vec3.atBottomCenterOf(perch), MonkeyState.CLIMBING, leavesYaw, STEP_SPEED));
-                    return new ClimbRoute(start, path, true);
+                    return new ClimbRoute(start, trunkSide, path, true, hopOffLanding(level, start, trunkSide));
                 }
             }
         }
@@ -237,7 +247,13 @@ public final class TreeSpots {
         // No way on top; just hang out somewhere under the canopy
         List<BlockPos> hangSpots = new ArrayList<>(cameFrom.keySet());
         addSwing(path, cameFrom, hangSpots.get(random.nextInt(hangSpots.size())), hangDrop);
-        return new ClimbRoute(start, path, false);
+        return new ClimbRoute(start, trunkSide, path, false, hopOffLanding(level, start, trunkSide));
+    }
+
+    /// Where a monkey climbing down the column at `start` hops off to: a step away from the trunk if there's ground there
+    private static Vec3 hopOffLanding(BlockGetter level, BlockPos start, Direction trunkSide) {
+        BlockPos away = start.relative(trunkSide.getOpposite());
+        return Vec3.atBottomCenterOf(isGround(level, away) ? away : start);
     }
 
     /// From hanging under `cell`, checks whether the monkey can swing out to the open column at `outside`
@@ -300,10 +316,11 @@ public final class TreeSpots {
                     }
 
                     float yaw = direction.getOpposite().toYRot();
+                    BlockPos away = cursor.relative(direction);
                     return List.of(
                         new Waypoint(hugging(outside, direction.getOpposite(), hug, 0.0), MonkeyState.CLIMBING, yaw, STEP_SPEED),
-                        new Waypoint(hugging(cursor, direction.getOpposite(), hug, 0.0), MonkeyState.CLIMBING, yaw, CLIMB_SPEED),
-                        new Waypoint(Vec3.atBottomCenterOf(cursor), MonkeyState.CLIMBING, yaw, STEP_SPEED)
+                        new Waypoint(hugging(cursor, direction.getOpposite(), hug, TRUNK_JUMP_HEIGHT), MonkeyState.CLIMBING, yaw, CLIMB_SPEED),
+                        new Waypoint(Vec3.atBottomCenterOf(isGround(level, away) ? away : cursor), MonkeyState.LEAPING, Float.NaN, TRUNK_JUMP_SPEED, TRUNK_JUMP_ARC)
                     );
                 }
 

@@ -79,7 +79,7 @@ public class MonkeyTreeGoal extends Goal {
         }
 
         if (this.fleeing) {
-            if (!this.wasHurtRecently()) {
+            if (!this.wasHurtRecently() && !this.monkey.isRunningOff()) {
                 return false;
             }
         } else if (!this.monkey.isTreeClimbRequested() && !this.isUpInTree()) {
@@ -108,7 +108,7 @@ public class MonkeyTreeGoal extends Goal {
 
         this.nextTemptCheck = this.monkey.tickCount + TEMPT_CHECK_INTERVAL;
         Player player = this.monkey.level().getNearestPlayer(this.monkey, TEMPT_RANGE);
-        if (!this.isTempting(player) || !this.isUpInTree(player) || this.monkey.distanceToSqr(player) < 6.0) {
+        if (!this.isTempting(player) || !this.isPlayerUpInTree(player) || this.monkey.distanceToSqr(player) < 6.0) {
             return false;
         }
 
@@ -222,7 +222,10 @@ public class MonkeyTreeGoal extends Goal {
         double distance = this.monkey.position().subtract(start).horizontalDistance();
         boolean level = Math.abs(this.monkey.getY() - start.y) < 0.6;
 
-        if (level && distance < 0.4) {
+        // Jump onto the trunk from a little way off, as long as the trunk isn't in the way
+        Vec3 towardsTrunk = Vec3.atLowerCornerOf(this.route.trunkSide().getUnitVec3i());
+        boolean inFront = this.monkey.position().subtract(start).dot(towardsTrunk) < 0.2;
+        if (level && (distance < 0.4 || distance < 1.8 && inFront)) {
             this.climb();
         } else if (this.phaseTicks > APPROACH_TIMEOUT) {
             if (level && distance < 1.5) {
@@ -262,7 +265,7 @@ public class MonkeyTreeGoal extends Goal {
 
         Waypoint leg = path.get(index);
         double speed = this.fleeing ? leg.speed() * FLEE_SPEED_FACTOR : leg.speed();
-        this.monkey.glideTo(leg.pos(), speed, leg.pose(), leg.yaw(), 0.0, () -> this.follow(path, index + 1, then));
+        this.monkey.glideTo(leg.pos(), speed, leg.pose(), leg.yaw(), leg.arc(), () -> this.follow(path, index + 1, then));
     }
 
     private void perch(int duration) {
@@ -430,11 +433,18 @@ public class MonkeyTreeGoal extends Goal {
 
         // A banana down on the ground; one up in the trees is a reason to stay
         Player player = this.monkey.level().getNearestPlayer(this.monkey, 10.0);
-        return this.isTempting(player) && !this.isUpInTree(player);
+        return this.isTempting(player) && !this.isPlayerUpInTree(player);
     }
 
     private boolean isUpInTree() {
         return this.isUpInTree(this.monkey);
+    }
+
+    /// Standing, or hopping about, on top of leaves or logs well above the ground
+    private boolean isPlayerUpInTree(Player player) {
+        BlockPos pos = player.blockPosition();
+        return (TreeSpots.isTree(player.level().getBlockState(pos.below())) || TreeSpots.isTree(player.level().getBlockState(pos.below(2))))
+            && TreeSpots.heightAboveGround(player.level(), pos) >= 3;
     }
 
     /// Standing on top of leaves or logs well above the ground
