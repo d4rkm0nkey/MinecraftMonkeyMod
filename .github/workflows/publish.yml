@@ -1,6 +1,10 @@
 name: publish
-# Run by hand from the Actions tab once the version in gradle.properties is bumped and CHANGELOG.md is written
+# Runs when a version tag like v1.0.0-beta.1 is pushed, or by hand from the Actions tab.
+# Bump the version in gradle.properties and write CHANGELOG.md first.
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
 
 jobs:

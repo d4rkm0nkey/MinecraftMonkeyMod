@@ -70,7 +70,7 @@ Versions are published to Modrinth and CurseForge as betas with the [mod publish
 
 1. Set `mod_version` and the project ids in `gradle.properties`, and write `CHANGELOG.md`
 2. `./gradlew publishMods -PpublishDryRun` shows what would be uploaded
-3. `MODRINTH_TOKEN=... CURSEFORGE_TOKEN=... ./gradlew publishMods` uploads. In CI, start the manual **publish** job on GitLab or the **publish** workflow on GitHub; both read the tokens from `MODRINTH_TOKEN` and `CURSEFORGE_TOKEN` variables/secrets
+3. Push a tag named after the version (`git tag v1.0.0-beta.1 && git push origin v1.0.0-beta.1`). The **publish** workflow builds that commit and uploads it, using the `MODRINTH_TOKEN` and `CURSEFORGE_TOKEN` repository secrets. Locally, `MODRINTH_TOKEN=... CURSEFORGE_TOKEN=... ./gradlew publishMods` does the same
 
 Animations live in `common/src/main/resources/assets/cheeky_monkeys/geckolib/animations/entity/monkey.animation.json`
 and can be edited in Blockbench with the GeckoLib plugin.
