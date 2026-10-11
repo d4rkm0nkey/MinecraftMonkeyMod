@@ -13,6 +13,8 @@ public final class ModWorldgen {
     public static final int MONKEY_SPAWN_WEIGHT = 60;
     public static final int MONKEY_MIN_GROUP = 3;
     public static final int MONKEY_MAX_GROUP = 5;
+    /// Snowy forests are home to plenty of other animals already, so snow monkeys are rarer
+    public static final int SNOW_MONKEY_SPAWN_WEIGHT = 12;
 
     private ModWorldgen() {
     }

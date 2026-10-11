@@ -3,10 +3,13 @@ package me.teajay.cheeky.monkeys.entity.ai;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import me.teajay.cheeky.monkeys.CheekyMonkeysConfig;
 import me.teajay.cheeky.monkeys.entity.MonkeyEmote;
 import me.teajay.cheeky.monkeys.entity.MonkeyEntity;
+import me.teajay.cheeky.monkeys.registry.ModAdvancements;
 import me.teajay.cheeky.monkeys.registry.ModSounds;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -23,8 +26,6 @@ public class MonkeyPickpocketGoal extends Goal {
     private static final double STEAL_RANGE_SQR = 3.24;
     private static final int CHECK_INTERVAL = 40;
     private static final int GIVE_UP_TICKS = 400;
-    /// Up to this many items are taken from a stack
-    private static final int MAX_STOLEN = 4;
     private final MonkeyEntity monkey;
     private @Nullable Player victim;
     private int ticks;
@@ -37,7 +38,7 @@ public class MonkeyPickpocketGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        if (this.monkey.tickCount < this.nextCheck || this.monkey.isTame() || this.monkey.isBaby() || !this.monkey.canPickpocket()
+        if (!CheekyMonkeysConfig.get().pickpocketing || this.monkey.tickCount < this.nextCheck || this.monkey.isTame() || this.monkey.isBaby() || !this.monkey.canPickpocket()
             || this.monkey.isScriptedMovement() || !this.monkey.getMainHandItem().isEmpty() || this.monkey.isRunningOff()) {
             return false;
         }
@@ -121,12 +122,15 @@ public class MonkeyPickpocketGoal extends Goal {
         }
 
         ItemStack pocket = pockets.get(this.monkey.getRandom().nextInt(pockets.size()));
-        ItemStack stolen = pocket.split(1 + this.monkey.getRandom().nextInt(Math.min(pocket.getCount(), MAX_STOLEN)));
+        ItemStack stolen = pocket.split(1 + this.monkey.getRandom().nextInt(Math.min(pocket.getCount(), CheekyMonkeysConfig.get().maxItemsStolen)));
         player.getInventory().setChanged();
         this.monkey.takeLoot(stolen);
         this.monkey.resetTheftCooldown();
         this.monkey.playSound(ModSounds.MONKEY_HAPPY.get(), 1.0F, this.monkey.getVoicePitch() * 1.2F);
         player.sendOverlayMessage(Component.translatable("message.cheeky_monkeys.stolen", stolen.getHoverName()));
+        if (player instanceof ServerPlayer serverPlayer) {
+            ModAdvancements.award(serverPlayer, ModAdvancements.DAYLIGHT_ROBBERY);
+        }
         this.monkey.runOffFrom(player, 200 + this.monkey.getRandom().nextInt(100));
     }
 

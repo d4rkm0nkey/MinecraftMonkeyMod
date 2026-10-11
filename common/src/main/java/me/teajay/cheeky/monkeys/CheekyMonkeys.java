@@ -23,6 +23,7 @@ public final class CheekyMonkeys {
 
     /// Called by each loader during mod construction, before any registry events fire.
     public static void init() {
+        CheekyMonkeysConfig.load();
         ModSounds.init();
         ModBlocks.init();
         ModBlockEntities.init();

@@ -2,6 +2,7 @@ package me.teajay.cheeky.monkeys.entity.ai;
 
 import java.util.Comparator;
 import java.util.EnumSet;
+import me.teajay.cheeky.monkeys.CheekyMonkeysConfig;
 import me.teajay.cheeky.monkeys.entity.MonkeyEntity;
 import me.teajay.cheeky.monkeys.entity.PetMode;
 import me.teajay.cheeky.monkeys.registry.ModSounds;
@@ -32,7 +33,7 @@ public class MonkeyDisarmGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        if (this.monkey.tickCount < this.nextCheck || !this.monkey.isTame() || this.monkey.getPetMode() == PetMode.STAY || this.monkey.isBaby()
+        if (!CheekyMonkeysConfig.get().petDisarming || this.monkey.tickCount < this.nextCheck || !this.monkey.isTame() || this.monkey.getPetMode() == PetMode.STAY || this.monkey.isBaby()
             || this.monkey.isScriptedMovement() || this.monkey.isInSittingPose() || !this.monkey.getMainHandItem().isEmpty()) {
             return false;
         }

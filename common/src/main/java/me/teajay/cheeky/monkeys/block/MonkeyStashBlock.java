@@ -1,8 +1,10 @@
 package me.teajay.cheeky.monkeys.block;
 
 import me.teajay.cheeky.monkeys.block.entity.MonkeyStashBlockEntity;
+import me.teajay.cheeky.monkeys.registry.ModAdvancements;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -42,6 +44,9 @@ public class MonkeyStashBlock extends BaseEntityBlock {
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         if (!level.isClientSide() && level.getBlockEntity(pos) instanceof MonkeyStashBlockEntity stash) {
             player.openMenu(stash);
+            if (player instanceof ServerPlayer serverPlayer) {
+                ModAdvancements.award(serverPlayer, ModAdvancements.FINDERS_KEEPERS);
+            }
         }
 
         return InteractionResult.SUCCESS;

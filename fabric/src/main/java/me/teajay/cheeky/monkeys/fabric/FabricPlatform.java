@@ -1,5 +1,7 @@
 package me.teajay.cheeky.monkeys.fabric;
 
+import java.nio.file.Path;
+import net.fabricmc.loader.api.FabricLoader;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import me.teajay.cheeky.monkeys.CheekyMonkeys;
@@ -22,6 +24,11 @@ public final class FabricPlatform implements Platform {
     @Override
     public String loaderName() {
         return "Fabric";
+    }
+
+    @Override
+    public Path configDirectory() {
+        return FabricLoader.getInstance().getConfigDir();
     }
 
     @Override

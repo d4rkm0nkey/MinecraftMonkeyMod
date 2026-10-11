@@ -1,0 +1,35 @@
+{
+  "parent": "cheeky_monkeys:husbandry/monkey_business",
+  "criteria": {
+    "tamed_snow_monkey": {
+      "trigger": "minecraft:tame_animal",
+      "conditions": {
+        "entity": {
+          "type": "minecraft:entity_properties",
+          "entity": "this",
+          "predicate": {
+            "minecraft:entity_type": "cheeky_monkeys:monkey",
+            "minecraft:nbt": "{Variant:\"snow\"}"
+          }
+        }
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "minecraft:snowball"
+    },
+    "title": {
+      "translate": "advancements.cheeky_monkeys.cool_customer.title"
+    },
+    "description": {
+      "translate": "advancements.cheeky_monkeys.cool_customer.description"
+    },
+    "frame": "goal"
+  },
+  "requirements": [
+    [
+      "tamed_snow_monkey"
+    ]
+  ]
+}

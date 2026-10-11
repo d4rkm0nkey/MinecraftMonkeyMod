@@ -17,5 +17,17 @@
   "message.cheeky_monkeys.mode.stay": "%s bleibt hier",
   "message.cheeky_monkeys.mode.wander": "%s streift hier herum",
   "message.cheeky_monkeys.mode.gather": "%s sammelt Gegenstände für dich",
-  "message.cheeky_monkeys.shoulder": "%s ist auf deine Schulter gesprungen. Schleiche, um ihn abzusetzen"
+  "message.cheeky_monkeys.shoulder": "%s ist auf deine Schulter gesprungen. Schleiche, um ihn abzusetzen",
+  "advancements.cheeky_monkeys.going_bananas.title": "Total banane",
+  "advancements.cheeky_monkeys.going_bananas.description": "Iss eine Banane",
+  "advancements.cheeky_monkeys.monkey_business.title": "Affentheater",
+  "advancements.cheeky_monkeys.monkey_business.description": "Gewinne einen Affen mit Bananen für dich",
+  "advancements.cheeky_monkeys.cool_customer.title": "Ganz cool",
+  "advancements.cheeky_monkeys.cool_customer.description": "Zähme einen Schneeaffen aus den verschneiten Wäldern",
+  "advancements.cheeky_monkeys.monkey_on_your_back.title": "Ein Affe im Nacken",
+  "advancements.cheeky_monkeys.monkey_on_your_back.description": "Trag deinen Affen auf der Schulter herum",
+  "advancements.cheeky_monkeys.daylight_robbery.title": "Am helllichten Tag",
+  "advancements.cheeky_monkeys.daylight_robbery.description": "Lass dir von einem Affen etwas klauen",
+  "advancements.cheeky_monkeys.finders_keepers.title": "Wer findet, darf behalten",
+  "advancements.cheeky_monkeys.finders_keepers.description": "Finde ein Affenversteck in den Baumkronen"
 }

@@ -1,0 +1,24 @@
+{
+  "parent": "cheeky_monkeys:husbandry/going_bananas",
+  "criteria": {
+    "granted": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "minecraft:leather"
+    },
+    "title": {
+      "translate": "advancements.cheeky_monkeys.daylight_robbery.title"
+    },
+    "description": {
+      "translate": "advancements.cheeky_monkeys.daylight_robbery.description"
+    }
+  },
+  "requirements": [
+    [
+      "granted"
+    ]
+  ]
+}

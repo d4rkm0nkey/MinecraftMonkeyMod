@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.OptionalInt;
 import java.util.UUID;
+import me.teajay.cheeky.monkeys.CheekyMonkeysConfig;
 import me.teajay.cheeky.monkeys.entity.ai.MonkeyDeliverGoal;
 import me.teajay.cheeky.monkeys.entity.ai.MonkeyDisarmGoal;
 import me.teajay.cheeky.monkeys.entity.ai.MonkeyFollowOwnerGoal;
@@ -24,6 +25,7 @@ import me.teajay.cheeky.monkeys.entity.ai.MonkeyRunOffGoal;
 import me.teajay.cheeky.monkeys.entity.ai.MonkeyTreeGoal;
 import me.teajay.cheeky.monkeys.entity.ai.MonkeyTroopGoal;
 import me.teajay.cheeky.monkeys.entity.ai.TreeSpots;
+import me.teajay.cheeky.monkeys.registry.ModAdvancements;
 import me.teajay.cheeky.monkeys.registry.ModEntities;
 import me.teajay.cheeky.monkeys.registry.ModSounds;
 import me.teajay.cheeky.monkeys.registry.ModTags;
@@ -33,6 +35,7 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -47,7 +50,10 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.SpawnGroupData;
+import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -80,6 +86,7 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
     public static final String ACTION_CONTROLLER = "action";
     /// Render data captured by the renderer for the animation controllers
     public static final DataTicket<MonkeyState> STATE_TICKET = DataTicket.create("cheeky_monkeys_state", MonkeyState.class);
+    public static final DataTicket<MonkeyVariant> VARIANT_TICKET = DataTicket.create("cheeky_monkeys_variant", MonkeyVariant.class);
     public static final DataTicket<Float> MOVE_SPEED_TICKET = DataTicket.create("cheeky_monkeys_move_speed", Float.class);
 
     /// How big the model is drawn; the Blockbench model is human sized
@@ -88,6 +95,7 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
     public static final float BABY_SCALE = 0.6F;
 
     private static final EntityDataAccessor<Byte> DATA_STATE = SynchedEntityData.defineId(MonkeyEntity.class, EntityDataSerializers.BYTE);
+    private static final EntityDataAccessor<Byte> DATA_VARIANT = SynchedEntityData.defineId(MonkeyEntity.class, EntityDataSerializers.BYTE);
     /// Id of the player whose shoulder the monkey is sitting on
     private static final EntityDataAccessor<OptionalInt> DATA_SHOULDER_OF = SynchedEntityData.defineId(MonkeyEntity.class, EntityDataSerializers.OPTIONAL_UNSIGNED_INT);
     /// Walk animation speed above which the monkey switches to its running gallop
@@ -163,6 +171,7 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
         super.defineSynchedData(entityData);
         entityData.define(DATA_STATE, (byte)MonkeyState.IDLE.ordinal());
         entityData.define(DATA_SHOULDER_OF, OptionalInt.empty());
+        entityData.define(DATA_VARIANT, (byte)MonkeyVariant.BROWN.ordinal());
     }
 
     @Override
@@ -299,6 +308,32 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
         this.theftCooldown = THEFT_COOLDOWN_MIN + this.random.nextInt(THEFT_COOLDOWN_MIN * 2);
     }
 
+    public MonkeyVariant getVariant() {
+        return MonkeyVariant.byId(this.entityData.get(DATA_VARIANT));
+    }
+
+    public void setVariant(MonkeyVariant variant) {
+        this.entityData.set(DATA_VARIANT, (byte)variant.ordinal());
+    }
+
+    /// Monkeys born in snowy forests are snow monkeys, wherever they came from
+    @Override
+    public @Nullable SpawnGroupData finalizeSpawn(
+        ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason spawnReason, @Nullable SpawnGroupData groupData
+    ) {
+        if (spawnReason != EntitySpawnReason.BREEDING) {
+            this.setVariant(level.getBiome(this.blockPosition()).is(ModTags.HAS_SNOW_MONKEYS) ? MonkeyVariant.SNOW : MonkeyVariant.BROWN);
+        }
+
+        return super.finalizeSpawn(level, difficulty, spawnReason, groupData);
+    }
+
+    /// Snow monkeys have the fur for powder snow
+    @Override
+    public boolean canFreeze() {
+        return this.getVariant() != MonkeyVariant.SNOW && super.canFreeze();
+    }
+
     // region Pet
 
     public PetMode getPetMode() {
@@ -350,6 +385,9 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
         this.ownerStoodUp = false;
         this.ownerSneakTicks = 0;
         this.playSound(ModSounds.MONKEY_HAPPY.get(), 0.8F, this.getVoicePitch());
+        if (player instanceof ServerPlayer serverPlayer) {
+            ModAdvancements.award(serverPlayer, ModAdvancements.MONKEY_ON_YOUR_BACK);
+        }
     }
 
     public void hopOffShoulder() {
@@ -403,7 +441,7 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
 
     /// Keeps an eye out for monsters coming for the owner: screeches and makes them glow so they can't sneak up
     private void tickLookout() {
-        if (this.tickCount % 20 != 0 || !this.isTame() || !(this.getOwner() instanceof LivingEntity owner) || owner.level() != this.level()
+        if (!CheekyMonkeysConfig.get().petLookout || this.tickCount % 20 != 0 || !this.isTame() || !(this.getOwner() instanceof LivingEntity owner) || owner.level() != this.level()
             || this.distanceToSqr(owner) > 24.0 * 24.0) {
             return;
         }
@@ -431,12 +469,14 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
     protected void addAdditionalSaveData(ValueOutput output) {
         super.addAdditionalSaveData(output);
         output.putString("PetMode", this.petMode.serializedName());
+        output.putString("Variant", this.getVariant().serializedName());
     }
 
     @Override
     protected void readAdditionalSaveData(ValueInput input) {
         super.readAdditionalSaveData(input);
         this.petMode = PetMode.byName(input.getStringOr("PetMode", PetMode.FOLLOW.serializedName()));
+        this.setVariant(MonkeyVariant.byName(input.getStringOr("Variant", MonkeyVariant.BROWN.serializedName())));
         if (this.petMode == PetMode.WANDER) {
             this.setHomeTo(this.blockPosition(), WANDER_RADIUS);
         }
@@ -666,7 +706,8 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
         }
 
         // A thief down on the ground heads up into the trees to stash its loot
-        if (!this.isTame() && this.hasLoot() && !this.isRunningOff() && this.onGround() && this.tickCount % 100 == 0) {
+        if (!this.isTame() && this.hasLoot() && !this.isRunningOff() && this.onGround() && this.tickCount % 100 == 0
+            && CheekyMonkeysConfig.get().stashNests) {
             this.requestTreeClimb();
         }
     }
@@ -818,6 +859,10 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
     @Override
     public @Nullable AgeableMob getBreedOffspring(ServerLevel level, AgeableMob partner) {
         MonkeyEntity baby = ModEntities.MONKEY.get().create(level, EntitySpawnReason.BREEDING);
+        if (baby != null && partner instanceof MonkeyEntity other) {
+            baby.setVariant(this.random.nextBoolean() ? this.getVariant() : other.getVariant());
+        }
+
         if (baby != null && this.isTame()) {
             baby.setOwnerReference(this.getOwnerReference());
             baby.setTame(true, true);

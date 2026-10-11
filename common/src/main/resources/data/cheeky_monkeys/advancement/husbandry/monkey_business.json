@@ -1,0 +1,33 @@
+{
+  "parent": "cheeky_monkeys:husbandry/going_bananas",
+  "criteria": {
+    "tamed_monkey": {
+      "trigger": "minecraft:tame_animal",
+      "conditions": {
+        "entity": {
+          "type": "minecraft:entity_properties",
+          "entity": "this",
+          "predicate": {
+            "minecraft:entity_type": "cheeky_monkeys:monkey"
+          }
+        }
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "cheeky_monkeys:monkey_spawn_egg"
+    },
+    "title": {
+      "translate": "advancements.cheeky_monkeys.monkey_business.title"
+    },
+    "description": {
+      "translate": "advancements.cheeky_monkeys.monkey_business.description"
+    }
+  },
+  "requirements": [
+    [
+      "tamed_monkey"
+    ]
+  ]
+}

@@ -3,6 +3,7 @@ package me.teajay.cheeky.monkeys.entity.ai;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
+import me.teajay.cheeky.monkeys.CheekyMonkeysConfig;
 import me.teajay.cheeky.monkeys.block.entity.MonkeyStashBlockEntity;
 import me.teajay.cheeky.monkeys.entity.MonkeyEmote;
 import me.teajay.cheeky.monkeys.entity.MonkeyEntity;
@@ -340,7 +341,7 @@ public class MonkeyTreeGoal extends Goal {
         }
 
         // A thief up in the trees hides its loot before doing anything else
-        if (!this.monkey.isTame() && this.monkey.hasLoot() && !this.stashFailed) {
+        if (!this.monkey.isTame() && this.monkey.hasLoot() && !this.stashFailed && CheekyMonkeysConfig.get().stashNests) {
             this.tickStash();
             return;
         }

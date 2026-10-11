@@ -27,6 +27,14 @@ public final class CheekyMonkeysFabric implements ModInitializer {
             ModWorldgen.MONKEY_MIN_GROUP,
             ModWorldgen.MONKEY_MAX_GROUP
         );
+        BiomeModifications.addSpawn(
+            BiomeSelectors.tag(ModTags.HAS_SNOW_MONKEYS),
+            MobCategory.CREATURE,
+            ModEntities.MONKEY.get(),
+            ModWorldgen.SNOW_MONKEY_SPAWN_WEIGHT,
+            ModWorldgen.MONKEY_MIN_GROUP,
+            ModWorldgen.MONKEY_MAX_GROUP
+        );
         BiomeModifications.addFeature(BiomeSelectors.tag(ModTags.HAS_MONKEYS), GenerationStep.Decoration.VEGETAL_DECORATION, ModWorldgen.BANANA_BUNCHES);
 
         CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.FOOD_AND_DRINKS)

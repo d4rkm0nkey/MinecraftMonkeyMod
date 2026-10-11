@@ -6,6 +6,7 @@ import java.util.function.BiConsumer;
 import me.teajay.cheeky.monkeys.entity.MonkeyEmote;
 import me.teajay.cheeky.monkeys.entity.MonkeyEntity;
 import me.teajay.cheeky.monkeys.entity.MonkeyState;
+import me.teajay.cheeky.monkeys.entity.MonkeyVariant;
 import me.teajay.cheeky.monkeys.entity.PetMode;
 import me.teajay.cheeky.monkeys.block.entity.MonkeyStashBlockEntity;
 import me.teajay.cheeky.monkeys.registry.ModBlocks;
@@ -24,7 +25,10 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.SpawnPlacements;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -121,6 +125,7 @@ public class MonkeyShowcaseClientGameTest implements FabricClientGameTest {
             disarmAndLookout(context, server, ground);
             shoulder(context, server, ground);
             stashNest(context, server, ground);
+            snowMonkeysAndAdvancements(context, server, ground);
         }
     }
 
@@ -499,6 +504,74 @@ public class MonkeyShowcaseClientGameTest implements FabricClientGameTest {
             + (nest.getX() + 0.5) + " " + nest.getY() + " " + (nest.getZ() + 0.5));
         context.waitTicks(10);
         context.takeScreenshot("stash_nest");
+    }
+
+    /// Monkeys born in snowy forests are snow monkeys; also checks the advancements earned along the way and the config file
+    private static void snowMonkeysAndAdvancements(ClientGameTestContext context, TestServerContext server, int ground) {
+        server.runCommand("gamemode survival @p");
+        server.runCommand("fill -8 " + ground + " -10 12 " + (ground + 8) + " 30 minecraft:air");
+        server.runCommand("fillbiome -8 " + (ground - 4) + " 18 8 " + (ground + 8) + " 30 minecraft:snowy_taiga");
+        server.runCommand("fill -8 " + (ground - 1) + " 18 8 " + (ground - 1) + " 30 minecraft:snow_block");
+        server.runOnServer(s -> monkeys(s).forEach(MonkeyEntity::discard));
+        // Snowy taigas list monkeys among their creatures, and monkeys may spawn on snowy grass and snow blocks
+        server.runCommand("setblock 4 " + (ground - 1) + " 26 minecraft:grass_block[snowy=true]");
+        server.runCommand("setblock 4 " + ground + " 26 minecraft:snow");
+        String spawnProblem = server.computeOnServer(s -> {
+            ServerLevel level = s.overworld();
+            BlockPos pos = new BlockPos(0, ground, 26);
+            boolean listed = level.getChunkSource().getGenerator().getMobsAt(level, level.structureManager(), MobCategory.CREATURE, pos)
+                .unwrap().stream().anyMatch(data -> data.value().type() == ModEntities.MONKEY.get());
+            if (!listed) {
+                return "snowy taiga creatures don't include monkeys";
+            }
+
+            for (BlockPos spot : List.of(pos, new BlockPos(4, ground, 26))) {
+                if (!SpawnPlacements.checkSpawnRules(ModEntities.MONKEY.get(), level, EntitySpawnReason.NATURAL, spot, level.getRandom())) {
+                    return "monkeys can't spawn on " + level.getBlockState(spot.below()) + " under " + level.getBlockState(spot);
+                }
+            }
+
+            return null;
+        });
+        if (spawnProblem != null) {
+            throw new AssertionError(spawnProblem);
+        }
+
+        // Without NBT, so the monkeys get set up as if spawned naturally
+        server.runCommand("summon cheeky_monkeys:monkey -1.5 " + ground + " 22.5");
+        server.runCommand("summon cheeky_monkeys:monkey 1.5 " + ground + " 12.5");
+        server.runOnServer(s -> monkeys(s).forEach(m -> m.setNoAi(true)));
+        context.waitTicks(5);
+        List<MonkeyVariant> variants = server.computeOnServer(s -> monkeys(s).stream().sorted(Comparator.comparingDouble(MonkeyEntity::getZ))
+            .map(MonkeyEntity::getVariant).toList());
+        if (!variants.equals(List.of(MonkeyVariant.BROWN, MonkeyVariant.SNOW))) {
+            throw new AssertionError("Expected a brown monkey in the plains and a snow monkey in the snowy taiga, got " + variants);
+        }
+
+        server.runCommand("tp @p 0.5 " + ground + " 17.5 180 10");
+        server.runOnServer(s -> monkeys(s).stream().filter(m -> m.getVariant() == MonkeyVariant.SNOW).forEach(m -> m.snapTo(-0.5, ground, 15.0, 180, 0)));
+        server.runOnServer(s -> monkeys(s).stream().filter(m -> m.getVariant() == MonkeyVariant.BROWN).forEach(m -> m.snapTo(1.5, ground, 15.0, 180, 0)));
+        server.runCommand("tp @p 0.5 " + ground + " 11.5 0 15");
+        context.waitTicks(10);
+        context.takeScreenshot("snow_monkey");
+
+        List<String> missing = server.computeOnServer(s -> {
+            ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
+            return java.util.stream.Stream.of("husbandry/monkey_on_your_back", "husbandry/daylight_robbery", "husbandry/going_bananas")
+                .filter(path -> {
+                    var holder = s.getAdvancements().get(me.teajay.cheeky.monkeys.CheekyMonkeys.id(path));
+                    return holder == null || !player.getAdvancements().getOrStartProgress(holder).isDone();
+                })
+                .toList();
+        });
+        // Nobody ate a banana in these tests, so only that one should be missing
+        if (!missing.equals(List.of("husbandry/going_bananas"))) {
+            throw new AssertionError("Expected the shoulder and pickpocket advancements to be earned, still missing " + missing);
+        }
+
+        if (!java.nio.file.Files.exists(net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("cheeky_monkeys.json"))) {
+            throw new AssertionError("Expected the config file to be written");
+        }
     }
 
     private static void waitUntil(ClientGameTestContext context, TestServerContext server, String what, int timeout, java.util.function.Predicate<MinecraftServer> condition) {

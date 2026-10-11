@@ -1,0 +1,25 @@
+{
+  "parent": "cheeky_monkeys:husbandry/daylight_robbery",
+  "criteria": {
+    "granted": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "minecraft:stick"
+    },
+    "title": {
+      "translate": "advancements.cheeky_monkeys.finders_keepers.title"
+    },
+    "description": {
+      "translate": "advancements.cheeky_monkeys.finders_keepers.description"
+    },
+    "frame": "goal"
+  },
+  "requirements": [
+    [
+      "granted"
+    ]
+  ]
+}

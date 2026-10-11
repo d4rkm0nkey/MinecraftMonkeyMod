@@ -17,5 +17,17 @@
   "message.cheeky_monkeys.mode.stay": "%s is staying here",
   "message.cheeky_monkeys.mode.wander": "%s is wandering around here",
   "message.cheeky_monkeys.mode.gather": "%s is fetching items for you",
-  "message.cheeky_monkeys.shoulder": "%s hopped onto your shoulder. Sneak to let it down"
+  "message.cheeky_monkeys.shoulder": "%s hopped onto your shoulder. Sneak to let it down",
+  "advancements.cheeky_monkeys.going_bananas.title": "Going Bananas",
+  "advancements.cheeky_monkeys.going_bananas.description": "Eat a banana",
+  "advancements.cheeky_monkeys.monkey_business.title": "Monkey Business",
+  "advancements.cheeky_monkeys.monkey_business.description": "Win a monkey over with bananas",
+  "advancements.cheeky_monkeys.cool_customer.title": "Cool Customer",
+  "advancements.cheeky_monkeys.cool_customer.description": "Tame a snow monkey from the snowy forests",
+  "advancements.cheeky_monkeys.monkey_on_your_back.title": "Monkey on Your Back",
+  "advancements.cheeky_monkeys.monkey_on_your_back.description": "Carry your monkey around on your shoulder",
+  "advancements.cheeky_monkeys.daylight_robbery.title": "Daylight Robbery",
+  "advancements.cheeky_monkeys.daylight_robbery.description": "Get your pocket picked by a monkey",
+  "advancements.cheeky_monkeys.finders_keepers.title": "Finders Keepers",
+  "advancements.cheeky_monkeys.finders_keepers.description": "Find a monkey stash in the treetops"
 }

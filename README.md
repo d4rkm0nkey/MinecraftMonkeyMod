@@ -6,7 +6,7 @@ Monkeys and bananas for your jungles, on Fabric and NeoForge.
 ![Latest Release](https://img.shields.io/github/v/release/d4rkm0nkey/MinecraftMonkeyMod?include_prereleases)
 
 ## Features
-- **Monkeys** live in troops in jungle biomes. They chatter, pound their chests, scratch their heads, rub their bellies and look around.
+- **Monkeys** live in troops in jungle biomes, and grey, red-faced **snow monkeys** in snowy taigas and groves (they don't mind powder snow). They chatter, pound their chests, scratch their heads, rub their bellies and look around.
 - **Bananas** hang from jungle trunks just below the canopy and ripen in three stages. You can eat them, or plant them on a jungle log like cocoa beans.
 - **Taming:** feed a wild monkey bananas until it trusts you. Bananas also make monkeys fall in love, so wild troops can be bred.
 - **Pets:** tamed monkeys eat from your hand, cheer when tamed and dance next to a playing jukebox. Right-click a pet to switch what it does:
@@ -21,6 +21,20 @@ Monkeys and bananas for your jungles, on Fabric and NeoForge.
 - **Troops:** wild monkeys stick together, and when one gets hurt it screeches and the whole troop scatters up the trees.
 - **Leaping:** monkeys jump over gaps they can't walk around, and sometimes take a big leap forward just for fun.
 - Monkeys are built for falling out of trees, so they take only a little fall damage.
+
+- **Advancements:** six of them in the Husbandry tab, from eating a banana to finding a monkey's stash.
+
+## Configuration
+`config/cheeky_monkeys.json` is created on first start:
+
+| Option | Default | |
+|---|---|---|
+| `pickpocketing` | `true` | Wild monkeys steal from players |
+| `maxItemsStolen` | `4` | Most items taken from one stack |
+| `stashNests` | `true` | Thieves hide loot in nests; otherwise they keep holding it |
+| `grabThrownBananas` | `true` | Monkeys race for bananas on the ground |
+| `petLookout` | `true` | Pets make monsters coming for you glow |
+| `petDisarming` | `true` | Pets snatch weapons from monsters |
 
 ## Requirements
 | | Version |
@@ -50,6 +64,13 @@ Requires JDK 25.
 ./gradlew :fabric:runClientGameTest # shows monkeys in every state, climbing and leaping, and saves screenshots
                                     # to fabric/build/run/clientGameTest/screenshots
 ```
+
+### Releasing
+Versions are published to Modrinth and CurseForge as betas with the [mod publish plugin](https://modmuss50.github.io/mod-publish-plugin/):
+
+1. Set `mod_version` and the project ids in `gradle.properties`, and write `CHANGELOG.md`
+2. `./gradlew publishMods -PpublishDryRun` shows what would be uploaded
+3. `MODRINTH_TOKEN=... CURSEFORGE_TOKEN=... ./gradlew publishMods` uploads, or run the **publish** workflow on GitHub with those two repository secrets
 
 Animations live in `common/src/main/resources/assets/cheeky_monkeys/geckolib/animations/entity/monkey.animation.json`
 and can be edited in Blockbench with the GeckoLib plugin.

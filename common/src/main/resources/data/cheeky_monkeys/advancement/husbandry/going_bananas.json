@@ -1,0 +1,29 @@
+{
+  "parent": "minecraft:husbandry/root",
+  "criteria": {
+    "eat_banana": {
+      "trigger": "minecraft:consume_item",
+      "conditions": {
+        "item": {
+          "items": "cheeky_monkeys:banana"
+        }
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "cheeky_monkeys:banana"
+    },
+    "title": {
+      "translate": "advancements.cheeky_monkeys.going_bananas.title"
+    },
+    "description": {
+      "translate": "advancements.cheeky_monkeys.going_bananas.description"
+    }
+  },
+  "requirements": [
+    [
+      "eat_banana"
+    ]
+  ]
+}

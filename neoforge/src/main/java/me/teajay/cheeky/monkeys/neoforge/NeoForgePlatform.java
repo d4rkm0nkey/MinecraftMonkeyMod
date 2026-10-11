@@ -1,5 +1,7 @@
 package me.teajay.cheeky.monkeys.neoforge;
 
+import java.nio.file.Path;
+import net.neoforged.fml.loading.FMLPaths;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -34,6 +36,11 @@ public final class NeoForgePlatform implements Platform {
     @Override
     public String loaderName() {
         return "NeoForge";
+    }
+
+    @Override
+    public Path configDirectory() {
+        return FMLPaths.CONFIGDIR.get();
     }
 
     @Override

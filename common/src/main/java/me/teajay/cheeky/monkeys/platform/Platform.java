@@ -1,5 +1,6 @@
 package me.teajay.cheeky.monkeys.platform;
 
+import java.nio.file.Path;
 import java.util.ServiceLoader;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -20,6 +21,9 @@ public interface Platform {
         .orElseThrow(() -> new IllegalStateException("No Cheeky Monkeys platform implementation found"));
 
     String loaderName();
+
+    /// Where the loader keeps config files
+    Path configDirectory();
 
     /// Registers an object under this mod's namespace. The returned supplier is safe to call
     /// once the registry has been populated (immediately on Fabric, after the RegisterEvent on NeoForge).

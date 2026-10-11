@@ -1,0 +1,24 @@
+{
+  "parent": "cheeky_monkeys:husbandry/monkey_business",
+  "criteria": {
+    "granted": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "minecraft:saddle"
+    },
+    "title": {
+      "translate": "advancements.cheeky_monkeys.monkey_on_your_back.title"
+    },
+    "description": {
+      "translate": "advancements.cheeky_monkeys.monkey_on_your_back.description"
+    }
+  },
+  "requirements": [
+    [
+      "granted"
+    ]
+  ]
+}

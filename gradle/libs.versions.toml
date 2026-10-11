@@ -10,6 +10,7 @@ geckolib = "5.5.7"
 
 plugin-loom = "1.18.4"
 plugin-moddevgradle = "2.0.148"
+plugin-mod-publish = "2.2.1"
 
 [libraries]
 minecraft = { group = "com.mojang", name = "minecraft", version.ref = "minecraft" }
@@ -22,3 +23,4 @@ geckolib-neoforge = { group = "com.geckolib", name = "geckolib-neoforge-26.3", v
 [plugins]
 loom = { id = "net.fabricmc.fabric-loom", version.ref = "plugin-loom" }
 moddevgradle = { id = "net.neoforged.moddev", version.ref = "plugin-moddevgradle" }
+mod-publish = { id = "me.modmuss50.mod-publish-plugin", version.ref = "plugin-mod-publish" }

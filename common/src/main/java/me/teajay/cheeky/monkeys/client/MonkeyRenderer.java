@@ -3,16 +3,19 @@ package me.teajay.cheeky.monkeys.client;
 import com.geckolib.constant.DataTickets;
 import com.geckolib.model.DefaultedEntityGeoModel;
 import com.geckolib.renderer.GeoEntityRenderer;
+import com.geckolib.renderer.base.GeoRenderState;
 import com.geckolib.renderer.base.BoneSnapshots;
 import com.geckolib.renderer.base.RenderPassInfo;
 import com.geckolib.renderer.layer.builtin.ItemInHandGeoLayer;
 import me.teajay.cheeky.monkeys.CheekyMonkeys;
 import me.teajay.cheeky.monkeys.entity.MonkeyEntity;
 import me.teajay.cheeky.monkeys.entity.MonkeyState;
+import me.teajay.cheeky.monkeys.entity.MonkeyVariant;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.Identifier;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
@@ -26,7 +29,12 @@ public class MonkeyRenderer extends GeoEntityRenderer<MonkeyEntity, LivingEntity
     private static final float TAIL_CURL_END = 35.0F * Mth.DEG_TO_RAD;
 
     public MonkeyRenderer(EntityRendererProvider.Context context) {
-        super(context, new DefaultedEntityGeoModel<>(CheekyMonkeys.id("monkey")));
+        super(context, new DefaultedEntityGeoModel<>(CheekyMonkeys.id("monkey")) {
+            @Override
+            public Identifier getTextureResource(GeoRenderState renderState) {
+                return renderState.getOrDefaultGeckolibData(MonkeyEntity.VARIANT_TICKET, MonkeyVariant.BROWN).texture();
+            }
+        });
         this.shadowRadius = 0.25F;
         this.withRenderLayer(new ItemInHandGeoLayer<>(context, this));
     }
@@ -34,6 +42,7 @@ public class MonkeyRenderer extends GeoEntityRenderer<MonkeyEntity, LivingEntity
     @Override
     public void addRenderData(MonkeyEntity monkey, @Nullable Void relatedObject, LivingEntityRenderState renderState, float partialTick) {
         renderState.addGeckolibData(MonkeyEntity.STATE_TICKET, monkey.getState());
+        renderState.addGeckolibData(MonkeyEntity.VARIANT_TICKET, monkey.getVariant());
         renderState.addGeckolibData(MonkeyEntity.MOVE_SPEED_TICKET, renderState.walkAnimationSpeed);
 
         // On a shoulder, stick to the owner's shoulder as they're drawn this frame, rather than trailing behind where the server last put it
