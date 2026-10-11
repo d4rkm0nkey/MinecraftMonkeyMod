@@ -10,5 +10,12 @@
   "subtitles.cheeky_monkeys.entity.monkey.happy": "Monkey cheers",
   "subtitles.cheeky_monkeys.entity.monkey.chest_pound": "Monkey pounds its chest",
   "tag.item.cheeky_monkeys.monkey_food": "Monkey Food",
-  "message.cheeky_monkeys.stolen": "A monkey stole your %s!"
+  "message.cheeky_monkeys.stolen": "A monkey stole your %s!",
+  "block.cheeky_monkeys.monkey_stash": "Monkey Stash",
+  "container.cheeky_monkeys.monkey_stash": "Monkey Stash",
+  "message.cheeky_monkeys.mode.follow": "%s is following you",
+  "message.cheeky_monkeys.mode.stay": "%s is staying here",
+  "message.cheeky_monkeys.mode.wander": "%s is wandering around here",
+  "message.cheeky_monkeys.mode.gather": "%s is fetching items for you",
+  "message.cheeky_monkeys.shoulder": "%s hopped onto your shoulder. Sneak to let it down"
 }

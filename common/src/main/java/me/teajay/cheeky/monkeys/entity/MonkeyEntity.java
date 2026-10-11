@@ -8,6 +8,14 @@ import com.geckolib.animation.object.PlayState;
 import com.geckolib.animation.state.AnimationTest;
 import com.geckolib.constant.dataticket.DataTicket;
 import com.geckolib.util.GeckoLibUtil;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.OptionalInt;
+import java.util.UUID;
+import me.teajay.cheeky.monkeys.entity.ai.MonkeyDeliverGoal;
+import me.teajay.cheeky.monkeys.entity.ai.MonkeyDisarmGoal;
+import me.teajay.cheeky.monkeys.entity.ai.MonkeyFollowOwnerGoal;
+import me.teajay.cheeky.monkeys.entity.ai.MonkeyGatherGoal;
 import me.teajay.cheeky.monkeys.entity.ai.MonkeyGrabFoodGoal;
 import me.teajay.cheeky.monkeys.entity.ai.MonkeyHopGoal;
 import me.teajay.cheeky.monkeys.entity.ai.MonkeyIdleEmoteGoal;
@@ -25,7 +33,12 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
@@ -43,7 +56,6 @@ import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.BreedGoal;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
-import net.minecraft.world.entity.ai.goal.FollowOwnerGoal;
 import net.minecraft.world.entity.ai.goal.FollowParentGoal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
@@ -52,6 +64,7 @@ import net.minecraft.world.entity.ai.goal.TemptGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -75,6 +88,8 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
     public static final float BABY_SCALE = 0.6F;
 
     private static final EntityDataAccessor<Byte> DATA_STATE = SynchedEntityData.defineId(MonkeyEntity.class, EntityDataSerializers.BYTE);
+    /// Id of the player whose shoulder the monkey is sitting on
+    private static final EntityDataAccessor<OptionalInt> DATA_SHOULDER_OF = SynchedEntityData.defineId(MonkeyEntity.class, EntityDataSerializers.OPTIONAL_UNSIGNED_INT);
     /// Walk animation speed above which the monkey switches to its running gallop
     private static final float RUN_THRESHOLD = 0.55F;
     /// Ticks in the air before a jump or fall counts as a leap, so small steps don't flicker the pose
@@ -84,6 +99,10 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
     private static final int GAP_LEAP_COOLDOWN = 20;
     private static final int THEFT_COOLDOWN_MIN = 2400;
     private static final double ALARM_RANGE = 16.0;
+    private static final int WANDER_RADIUS = 16;
+    private static final double LOOKOUT_RANGE = 16.0;
+    /// How long before the lookout warns about the same monster again
+    private static final int LOOKOUT_REPEAT_TICKS = 600;
 
     private final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
     private int emoteTicks;
@@ -110,6 +129,13 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
     /// Ticks until this monkey feels like picking a pocket again
     private int theftCooldown = THEFT_COOLDOWN_MIN + this.random.nextInt(THEFT_COOLDOWN_MIN);
     private boolean treeClimbRequested;
+    private PetMode petMode = PetMode.FOLLOW;
+    /// Holding something to give to the owner, so it doesn't get eaten or stashed
+    private boolean carryingForOwner;
+    /// On a shoulder: whether the owner has stood up since the monkey hopped on, so the sneak that put it there doesn't take it off again
+    private boolean ownerStoodUp;
+    private int ownerSneakTicks;
+    private final Map<UUID, Integer> spottedMonsters = new HashMap<>();
 
     public MonkeyEntity(EntityType<? extends MonkeyEntity> type, Level level) {
         super(type, level);
@@ -136,6 +162,7 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
     protected void defineSynchedData(SynchedEntityData.Builder entityData) {
         super.defineSynchedData(entityData);
         entityData.define(DATA_STATE, (byte)MonkeyState.IDLE.ordinal());
+        entityData.define(DATA_SHOULDER_OF, OptionalInt.empty());
     }
 
     @Override
@@ -147,11 +174,15 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
         this.goalSelector.addGoal(2, new MonkeyRunOffGoal(this));
         this.goalSelector.addGoal(3, new SitWhenOrderedToGoal(this));
         this.goalSelector.addGoal(4, new BreedGoal(this, 1.0));
+        // Pets bring what they're carrying to their owner, and go after monsters' weapons
+        this.goalSelector.addGoal(5, new MonkeyDeliverGoal(this));
+        this.goalSelector.addGoal(5, new MonkeyDisarmGoal(this));
         this.goalSelector.addGoal(5, new MonkeyGrabFoodGoal(this));
         // A player up a tree with a banana gets climbed to; one on the ground just gets followed
         this.goalSelector.addGoal(6, new MonkeyTreeGoal(this, MonkeyTreeGoal.Mode.TEMPTED));
         this.goalSelector.addGoal(7, new TemptGoal(this, 1.1, this::isFood, false));
-        this.goalSelector.addGoal(8, new FollowOwnerGoal(this, 1.2, 8.0F, 2.0F));
+        this.goalSelector.addGoal(8, new MonkeyGatherGoal(this));
+        this.goalSelector.addGoal(8, new MonkeyFollowOwnerGoal(this, 1.2, 8.0F, 2.0F));
         this.goalSelector.addGoal(9, new FollowParentGoal(this, 1.1));
         this.goalSelector.addGoal(10, new MonkeyPickpocketGoal(this));
         this.goalSelector.addGoal(11, new MonkeyTreeGoal(this, MonkeyTreeGoal.Mode.LEISURE));
@@ -267,6 +298,151 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
     public void resetTheftCooldown() {
         this.theftCooldown = THEFT_COOLDOWN_MIN + this.random.nextInt(THEFT_COOLDOWN_MIN * 2);
     }
+
+    // region Pet
+
+    public PetMode getPetMode() {
+        return this.petMode;
+    }
+
+    public void setPetMode(PetMode mode) {
+        this.petMode = mode;
+        this.setOrderedToSit(mode == PetMode.STAY);
+        this.setInSittingPose(mode == PetMode.STAY);
+        if (mode == PetMode.WANDER) {
+            this.setHomeTo(this.blockPosition(), WANDER_RADIUS);
+        } else {
+            this.clearHome();
+        }
+
+        this.navigation.stop();
+        this.setTarget(null);
+    }
+
+    public boolean isCarryingForOwner() {
+        return this.carryingForOwner;
+    }
+
+    public void setCarryingForOwner(boolean carrying) {
+        this.carryingForOwner = carrying;
+    }
+
+    /// The player whose shoulder the monkey is riding on, on both server and clients
+    public @Nullable Player getShoulderOwner() {
+        OptionalInt id = this.entityData.get(DATA_SHOULDER_OF);
+        return id.isPresent() && this.level().getEntity(id.getAsInt()) instanceof Player player ? player : null;
+    }
+
+    /// A monkey on a shoulder sits right next to the owner's eyes, so it mustn't get in the way of their clicks
+    @Override
+    public boolean isPickable() {
+        return this.entityData.get(DATA_SHOULDER_OF).isEmpty() && super.isPickable();
+    }
+
+    public void hopOnShoulder(Player player) {
+        if (this.petMode == PetMode.STAY) {
+            this.setPetMode(PetMode.FOLLOW);
+        }
+
+        this.entityData.set(DATA_SHOULDER_OF, OptionalInt.of(player.getId()));
+        this.holdPose(MonkeyState.SITTING);
+        this.navigation.stop();
+        this.ownerStoodUp = false;
+        this.ownerSneakTicks = 0;
+        this.playSound(ModSounds.MONKEY_HAPPY.get(), 0.8F, this.getVoicePitch());
+    }
+
+    public void hopOffShoulder() {
+        Player player = this.getShoulderOwner();
+        this.entityData.set(DATA_SHOULDER_OF, OptionalInt.empty());
+        this.releaseScriptedMovement();
+        if (player != null && player.level() == this.level()) {
+            // Jump down next to the owner
+            float yaw = player.yBodyRot * Mth.DEG_TO_RAD;
+            Vec3 landing = player.position().add(Mth.cos(yaw) * 1.2, 0.0, Mth.sin(yaw) * 1.2);
+            if (TreeSpots.isGround(this.level(), BlockPos.containing(landing))) {
+                this.leapTo(Vec3.atBottomCenterOf(BlockPos.containing(landing)), null);
+            }
+        }
+    }
+
+    /// Where a monkey sits on `player`'s left shoulder, given where the player is and which way their body faces
+    public static Vec3 shoulderPosition(Player player, Vec3 playerPos, float bodyYaw) {
+        float yaw = bodyYaw * Mth.DEG_TO_RAD;
+        Vec3 left = new Vec3(Mth.cos(yaw), 0.0, Mth.sin(yaw));
+        Vec3 forward = new Vec3(-Mth.sin(yaw), 0.0, Mth.cos(yaw));
+        return playerPos.add(left.scale(0.38)).add(forward.scale(-0.08)).add(0.0, player.getBbHeight() * 0.7, 0.0);
+    }
+
+    private void tickShoulder() {
+        if (this.entityData.get(DATA_SHOULDER_OF).isEmpty()) {
+            return;
+        }
+
+        Player player = this.getShoulderOwner();
+        if (player == null || !player.isAlive() || player.level() != this.level() || player.isSpectator() || player.isInWater()
+            || player.isSleeping() || player.isFallFlying()) {
+            this.hopOffShoulder();
+            return;
+        }
+
+        // Sneaking again lets the monkey down
+        if (!player.isShiftKeyDown()) {
+            this.ownerStoodUp = true;
+            this.ownerSneakTicks = 0;
+        } else if (this.ownerStoodUp && ++this.ownerSneakTicks > 5) {
+            this.hopOffShoulder();
+            return;
+        }
+
+        this.holdPose(MonkeyState.SITTING);
+        this.setPos(shoulderPosition(player, player.position(), player.yBodyRot));
+        this.setYRot(player.yBodyRot);
+        this.setYBodyRot(player.yBodyRot);
+    }
+
+    /// Keeps an eye out for monsters coming for the owner: screeches and makes them glow so they can't sneak up
+    private void tickLookout() {
+        if (this.tickCount % 20 != 0 || !this.isTame() || !(this.getOwner() instanceof LivingEntity owner) || owner.level() != this.level()
+            || this.distanceToSqr(owner) > 24.0 * 24.0) {
+            return;
+        }
+
+        this.spottedMonsters.values().removeIf(spotted -> this.tickCount - spotted > LOOKOUT_REPEAT_TICKS);
+        for (Monster monster : this.level().getEntitiesOfClass(Monster.class, owner.getBoundingBox().inflate(LOOKOUT_RANGE))) {
+            if (!monster.isAlive() || this.spottedMonsters.containsKey(monster.getUUID())
+                || monster.getTarget() != owner && monster.distanceToSqr(owner) > 100.0) {
+                continue;
+            }
+
+            this.spottedMonsters.put(monster.getUUID(), this.tickCount);
+            monster.addEffect(new MobEffectInstance(MobEffects.GLOWING, 200), this);
+            this.playSound(ModSounds.MONKEY_HURT.get(), 1.5F, this.getVoicePitch() * 1.5F);
+            this.getLookControl().setLookAt(monster);
+            if (!this.scriptedMovement && this.onGround() && !this.isInSittingPose() && !this.isEmoting()) {
+                this.playEmote(MonkeyEmote.CHEST_POUND);
+            }
+
+            return;
+        }
+    }
+
+    @Override
+    protected void addAdditionalSaveData(ValueOutput output) {
+        super.addAdditionalSaveData(output);
+        output.putString("PetMode", this.petMode.serializedName());
+    }
+
+    @Override
+    protected void readAdditionalSaveData(ValueInput input) {
+        super.readAdditionalSaveData(input);
+        this.petMode = PetMode.byName(input.getStringOr("PetMode", PetMode.FOLLOW.serializedName()));
+        if (this.petMode == PetMode.WANDER) {
+            this.setHomeTo(this.blockPosition(), WANDER_RADIUS);
+        }
+    }
+
+    // endregion
 
     // region Scripted movement
 
@@ -460,6 +636,8 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
         super.aiStep();
 
         if (!this.level().isClientSide()) {
+            this.tickShoulder();
+            this.tickLookout();
             this.tickEmotes();
             this.updateState();
         }
@@ -481,9 +659,15 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
         if (this.eatingTicks > 0 && --this.eatingTicks == 0) {
             this.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
             this.heal(2.0F);
-        } else if (this.eatingTicks == 0 && this.isFood(this.getMainHandItem()) && !this.isRunningOff() && !this.scriptedMovement) {
+        } else if (this.eatingTicks == 0 && this.isFood(this.getMainHandItem()) && !this.isRunningOff() && !this.scriptedMovement
+            && !this.carryingForOwner) {
             // Got away with a banana; time to eat it
             this.startEating(this.getMainHandItem());
+        }
+
+        // A thief down on the ground heads up into the trees to stash its loot
+        if (!this.isTame() && this.hasLoot() && !this.isRunningOff() && this.onGround() && this.tickCount % 100 == 0) {
+            this.requestTreeClimb();
         }
     }
 
@@ -556,12 +740,25 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
                     return InteractionResult.SUCCESS;
                 }
 
+                // Sneak and right-click with an empty hand to put the monkey on your shoulder
+                if (itemStack.isEmpty() && player.isSecondaryUseActive() && this.getShoulderOwner() == null) {
+                    if (!this.level().isClientSide()) {
+                        this.hopOnShoulder(player);
+                        player.sendOverlayMessage(Component.translatable("message.cheeky_monkeys.shoulder", this.getDisplayName()));
+                    }
+
+                    return InteractionResult.SUCCESS;
+                }
+
                 InteractionResult parentInteraction = super.mobInteract(player, hand);
                 if (!parentInteraction.consumesAction()) {
-                    this.setOrderedToSit(!this.isOrderedToSit());
+                    // Otherwise right-clicking switches between following, staying, wandering and gathering
+                    if (!this.level().isClientSide()) {
+                        this.setPetMode(this.petMode.next());
+                        player.sendOverlayMessage(this.petMode.describe(this.getDisplayName()));
+                    }
+
                     this.jumping = false;
-                    this.navigation.stop();
-                    this.setTarget(null);
                     return InteractionResult.SUCCESS;
                 }
 
@@ -592,7 +789,7 @@ public class MonkeyEntity extends TamableAnimal implements GeoEntity {
             this.tame(player);
             this.navigation.stop();
             this.setTarget(null);
-            this.setOrderedToSit(true);
+            this.setPetMode(PetMode.STAY);
             this.playEmote(MonkeyEmote.HAPPY);
             this.level().broadcastEntityEvent(this, (byte)7);
         } else {

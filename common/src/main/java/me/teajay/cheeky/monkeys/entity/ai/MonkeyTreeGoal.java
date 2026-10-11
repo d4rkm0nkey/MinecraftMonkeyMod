@@ -1,17 +1,26 @@
 package me.teajay.cheeky.monkeys.entity.ai;
 
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
+import me.teajay.cheeky.monkeys.block.entity.MonkeyStashBlockEntity;
 import me.teajay.cheeky.monkeys.entity.MonkeyEmote;
 import me.teajay.cheeky.monkeys.entity.MonkeyEntity;
 import me.teajay.cheeky.monkeys.entity.MonkeyState;
 import me.teajay.cheeky.monkeys.entity.ai.TreeSpots.ClimbRoute;
 import me.teajay.cheeky.monkeys.entity.ai.TreeSpots.Waypoint;
+import me.teajay.cheeky.monkeys.registry.ModBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -42,6 +51,8 @@ public class MonkeyTreeGoal extends Goal {
     private static final int MAX_HANG_DROP = 6;
     private static final double FLEE_SPEED_FACTOR = 1.8;
     private static final double TEMPT_RANGE = 16.0;
+    private static final int STASH_SEARCH_RANGE = 8;
+    private static final int STASH_GIVE_UP_TICKS = 300;
     private static final int TEMPT_CHECK_INTERVAL = 20;
     private static final MonkeyEmote[] PERCH_EMOTES = {MonkeyEmote.CHEST_POUND, MonkeyEmote.LOOK_AROUND, MonkeyEmote.SCRATCH_HEAD};
 
@@ -58,6 +69,8 @@ public class MonkeyTreeGoal extends Goal {
     private int cooldownUntil;
     private @Nullable Vec3 lookTarget;
     private @Nullable Player tempter;
+    /// Gave up on stashing the loot here, because there's no room for a nest or the nest is full
+    private boolean stashFailed;
     private int nextTemptCheck;
 
     public MonkeyTreeGoal(MonkeyEntity monkey, Mode mode) {
@@ -273,6 +286,7 @@ public class MonkeyTreeGoal extends Goal {
         this.monkey.setPosture(MonkeyState.PERCHING);
         this.setPhase(Phase.PERCH);
         this.phaseDuration = duration;
+        this.stashFailed = false;
     }
 
     /// Up in the tree with the player; walk over the canopy to them, leaping across gaps on the way
@@ -325,6 +339,12 @@ public class MonkeyTreeGoal extends Goal {
             return;
         }
 
+        // A thief up in the trees hides its loot before doing anything else
+        if (!this.monkey.isTame() && this.monkey.hasLoot() && !this.stashFailed) {
+            this.tickStash();
+            return;
+        }
+
         this.lookAround();
         if (!this.fleeing && !this.monkey.isEmoting() && this.monkey.getRandom().nextInt(200) == 0) {
             this.monkey.playEmote(PERCH_EMOTES[this.monkey.getRandom().nextInt(PERCH_EMOTES.length)]);
@@ -335,6 +355,66 @@ public class MonkeyTreeGoal extends Goal {
         } else if (!this.fleeing && this.wantsToComeDown()) {
             this.comeDown();
         }
+    }
+
+    /// Heads for the troop's nest nearby, or builds one right here, and puts the loot in it
+    private void tickStash() {
+        if (this.phaseTicks > STASH_GIVE_UP_TICKS) {
+            this.stashFailed = true;
+            this.monkey.getNavigation().stop();
+            this.monkey.setPosture(MonkeyState.PERCHING);
+            return;
+        }
+
+        if (this.phaseTicks % 10 != 0) {
+            return;
+        }
+
+        Level level = this.monkey.level();
+        BlockPos here = this.monkey.blockPosition();
+        BlockPos stash = BlockPos.betweenClosedStream(here.offset(-STASH_SEARCH_RANGE, -3, -STASH_SEARCH_RANGE), here.offset(STASH_SEARCH_RANGE, 3, STASH_SEARCH_RANGE))
+            .filter(pos -> level.getBlockState(pos).is(ModBlocks.MONKEY_STASH.get()))
+            .min(Comparator.comparingDouble(pos -> pos.distSqr(here)))
+            .map(BlockPos::immutable)
+            .orElseGet(() -> this.buildStash(level, here));
+
+        if (stash == null) {
+            this.stashFailed = true;
+            return;
+        }
+
+        if (Vec3.atBottomCenterOf(stash).distanceToSqr(this.monkey.position()) > 4.5) {
+            this.monkey.setPosture(null);
+            this.monkey.getNavigation().moveTo(stash.getX() + 0.5, stash.getY(), stash.getZ() + 0.5, 1.0);
+            return;
+        }
+
+        this.monkey.getNavigation().stop();
+        this.monkey.setPosture(MonkeyState.PERCHING);
+        this.monkey.getLookControl().setLookAt(Vec3.atCenterOf(stash));
+        if (level.getBlockEntity(stash) instanceof MonkeyStashBlockEntity nest) {
+            ItemStack rest = nest.stash(this.monkey.getMainHandItem());
+            this.monkey.setItemSlot(EquipmentSlot.MAINHAND, rest);
+            if (rest.isEmpty()) {
+                this.monkey.playEmote(MonkeyEmote.HAPPY);
+            } else {
+                this.stashFailed = true;
+            }
+        }
+    }
+
+    /// Weaves a new nest on the leaves right next to the monkey
+    private @Nullable BlockPos buildStash(Level level, BlockPos here) {
+        for (BlockPos pos : BlockPos.betweenClosed(here.offset(-1, 0, -1), here.offset(1, 0, 1))) {
+            if (!pos.equals(here) && TreeSpots.isPerch(level, pos) && level.getBlockState(pos).canBeReplaced()) {
+                BlockPos nest = pos.immutable();
+                level.setBlock(nest, ModBlocks.MONKEY_STASH.get().defaultBlockState(), Block.UPDATE_ALL);
+                level.playSound(null, nest, SoundEvents.GRASS_PLACE, SoundSource.NEUTRAL, 1.0F, 0.8F);
+                return nest;
+            }
+        }
+
+        return null;
     }
 
     private void tickHang() {

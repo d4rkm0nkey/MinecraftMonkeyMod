@@ -3,6 +3,7 @@ package me.teajay.cheeky.monkeys.entity.ai;
 import java.util.Comparator;
 import java.util.EnumSet;
 import me.teajay.cheeky.monkeys.entity.MonkeyEntity;
+import me.teajay.cheeky.monkeys.entity.PetMode;
 import me.teajay.cheeky.monkeys.registry.ModSounds;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -32,7 +33,9 @@ public class MonkeyGrabFoodGoal extends Goal {
     @Override
     public boolean canUse() {
         if (this.monkey.tickCount < this.nextCheck || this.monkey.isOrderedToSit() || this.monkey.isPassenger()
-            || this.monkey.isScriptedMovement() || !this.monkey.getMainHandItem().isEmpty()) {
+            || this.monkey.isScriptedMovement() || !this.monkey.getMainHandItem().isEmpty()
+            // Gathering pets fetch food for their owner instead of eating it
+            || this.monkey.isTame() && this.monkey.getPetMode() == PetMode.GATHER) {
             return false;
         }
 

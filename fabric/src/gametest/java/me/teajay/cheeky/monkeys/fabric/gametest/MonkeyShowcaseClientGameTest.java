@@ -6,13 +6,20 @@ import java.util.function.BiConsumer;
 import me.teajay.cheeky.monkeys.entity.MonkeyEmote;
 import me.teajay.cheeky.monkeys.entity.MonkeyEntity;
 import me.teajay.cheeky.monkeys.entity.MonkeyState;
+import me.teajay.cheeky.monkeys.entity.PetMode;
+import me.teajay.cheeky.monkeys.block.entity.MonkeyStashBlockEntity;
+import me.teajay.cheeky.monkeys.registry.ModBlocks;
 import me.teajay.cheeky.monkeys.registry.ModEntities;
 import me.teajay.cheeky.monkeys.registry.ModItems;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -109,6 +116,11 @@ public class MonkeyShowcaseClientGameTest implements FabricClientGameTest {
             gapLeap(context, server, ground);
             thrownBanana(context, server, ground);
             pickpocket(context, server, ground);
+            petModes(context, server, ground);
+            gather(context, server, ground);
+            disarmAndLookout(context, server, ground);
+            shoulder(context, server, ground);
+            stashNest(context, server, ground);
         }
     }
 
@@ -353,6 +365,142 @@ public class MonkeyShowcaseClientGameTest implements FabricClientGameTest {
         server.runCommand("kill @e[type=minecraft:item]");
     }
 
+    private static MonkeyEntity spawnPet(TestServerContext server, double x, int y, double z) {
+        return server.computeOnServer(s -> {
+            monkeys(s).forEach(MonkeyEntity::discard);
+            MonkeyEntity monkey = ModEntities.MONKEY.get().create(s.overworld(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+            monkey.snapTo(x, y, z, 0, 0);
+            s.overworld().addFreshEntity(monkey);
+            monkey.tame(s.getPlayerList().getPlayers().getFirst());
+            monkey.setPetMode(PetMode.FOLLOW);
+            return monkey;
+        });
+    }
+
+    /// Right-clicking a pet cycles follow, stay, wander, gather
+    private static void petModes(ClientGameTestContext context, TestServerContext server, int ground) {
+        server.runCommand("clear @p");
+        server.runCommand("tp @p 0.5 " + ground + " 12.5 180 20");
+        MonkeyEntity pet = spawnPet(server, 0.5, ground, 9.5);
+        List<PetMode> modes = server.computeOnServer(s -> {
+            ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
+            List<PetMode> seen = new java.util.ArrayList<>();
+            for (int i = 0; i < 4; i++) {
+                pet.mobInteract(player, InteractionHand.MAIN_HAND);
+                seen.add(pet.getPetMode());
+            }
+
+            return seen;
+        });
+        if (!modes.equals(List.of(PetMode.STAY, PetMode.WANDER, PetMode.GATHER, PetMode.FOLLOW))) {
+            throw new AssertionError("Expected right-clicks to cycle stay, wander, gather, follow but got " + modes);
+        }
+    }
+
+    /// In gather mode a pet brings items lying around to its owner
+    private static void gather(ClientGameTestContext context, TestServerContext server, int ground) {
+        server.runCommand("clear @p");
+        server.runCommand("tp @p 0.5 " + ground + " 12.5 180 20");
+        MonkeyEntity pet = spawnPet(server, 0.5, ground, 10.5);
+        server.runOnServer(s -> {
+            pet.setPetMode(PetMode.GATHER);
+            s.overworld().addFreshEntity(new ItemEntity(s.overworld(), -4.5, ground + 0.2, 6.5, new ItemStack(Items.COBBLESTONE, 12)));
+        });
+
+        waitUntil(context, server, "the pet picks up the cobblestone", 300, s -> pet.getMainHandItem().is(Items.COBBLESTONE));
+        context.waitTicks(5);
+        context.takeScreenshot("pet_gather");
+        waitUntil(context, server, "the pet hands over the cobblestone", 300,
+            s -> s.getPlayerList().getPlayers().getFirst().getInventory().countItem(Items.COBBLESTONE) == 12);
+    }
+
+    /// A pet snatches a monster's weapon and brings it over, and makes the monster glow as a warning
+    private static void disarmAndLookout(ClientGameTestContext context, TestServerContext server, int ground) {
+        server.runCommand("clear @p");
+        server.runCommand("difficulty easy");
+        server.runCommand("tp @p 0.5 " + ground + " 12.5 180 20");
+        MonkeyEntity pet = spawnPet(server, 0.5, ground, 11.5);
+        Zombie zombie = server.computeOnServer(s -> {
+            Zombie spawned = EntityTypes.ZOMBIE.create(s.overworld(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+            spawned.snapTo(0.5, ground, 6.5, 0, 0);
+            spawned.setNoAi(true);
+            spawned.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+            spawned.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+            s.overworld().addFreshEntity(spawned);
+            return spawned;
+        });
+
+        waitUntil(context, server, "the zombie glows", 60, s -> zombie.hasEffect(MobEffects.GLOWING));
+        waitUntil(context, server, "the pet snatches the sword", 300, s -> pet.getMainHandItem().is(Items.IRON_SWORD) && zombie.getMainHandItem().isEmpty());
+        context.waitTicks(3);
+        context.takeScreenshot("pet_disarm");
+        waitUntil(context, server, "the pet hands over the sword", 300,
+            s -> s.getPlayerList().getPlayers().getFirst().getInventory().countItem(Items.IRON_SWORD) == 1);
+        server.runOnServer(s -> zombie.discard());
+    }
+
+    /// Sneak-clicking puts the pet on your shoulder, where it rides along; sneaking again lets it down
+    private static void shoulder(ClientGameTestContext context, TestServerContext server, int ground) {
+        server.runCommand("tp @p 0.5 " + ground + " 12.5 180 0");
+        MonkeyEntity pet = spawnPet(server, 0.5, ground, 11.0);
+        server.runOnServer(s -> pet.hopOnShoulder(s.getPlayerList().getPlayers().getFirst()));
+        context.waitTicks(5);
+        server.runCommand("tp @p 2.5 " + ground + " 12.5 135 0");
+        context.waitTicks(5);
+        Vec3 offset = server.computeOnServer(s -> pet.position().subtract(s.getPlayerList().getPlayers().getFirst().position()));
+        if (Math.abs(offset.y - 1.26) > 0.1 || offset.horizontalDistance() > 0.5) {
+            throw new AssertionError("Expected the pet on the player's shoulder, but it's at offset " + offset);
+        }
+
+        context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_FRONT));
+        context.waitTicks(5);
+        context.takeScreenshot("pet_shoulder");
+        context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+
+        context.getInput().holdKey(options -> options.keyShift);
+        context.waitTicks(15);
+        context.getInput().releaseKey(options -> options.keyShift);
+        context.waitTicks(20);
+        if (server.computeOnServer(s -> pet.getShoulderOwner() != null || pet.isScriptedMovement())) {
+            throw new AssertionError("Expected the pet to hop off when the player sneaks");
+        }
+    }
+
+    /// A thief up in a tree weaves a nest and stashes its loot in it
+    private static void stashNest(ClientGameTestContext context, TestServerContext server, int ground) {
+        server.runCommand("fill -8 " + ground + " -10 12 " + (ground + 8) + " 16 minecraft:air");
+        server.runCommand("fill 0 " + ground + " -4 0 " + (ground + 4) + " -4 minecraft:oak_log");
+        server.runCommand("fill -2 " + (ground + 3) + " -6 2 " + (ground + 4) + " -2 minecraft:oak_leaves[persistent=true] keep");
+        server.runCommand("tp @p 4.5 " + (ground + 6) + " 1.5 145 30");
+        MonkeyEntity thief = server.computeOnServer(s -> {
+            monkeys(s).forEach(MonkeyEntity::discard);
+            MonkeyEntity monkey = ModEntities.MONKEY.get().create(s.overworld(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+            monkey.snapTo(1.5, ground + 5, -3.5, 0, 0);
+            s.overworld().addFreshEntity(monkey);
+            monkey.takeLoot(new ItemStack(Items.GOLD_INGOT, 3));
+            monkey.requestTreeClimb();
+            return monkey;
+        });
+
+        waitUntil(context, server, "the thief stashes its loot", 400, s -> !thief.hasLoot());
+        BlockPos nest = server.computeOnServer(s -> BlockPos.betweenClosedStream(-3, ground + 4, -7, 3, ground + 6, -1)
+            .filter(pos -> s.overworld().getBlockState(pos).is(ModBlocks.MONKEY_STASH.get())).findFirst().map(BlockPos::immutable).orElse(null));
+        if (nest == null) {
+            throw new AssertionError("Expected a stash nest on the canopy");
+        }
+
+        int gold = server.computeOnServer(s -> s.overworld().getBlockEntity(nest) instanceof MonkeyStashBlockEntity stash ? stash.countItem(Items.GOLD_INGOT) : 0);
+        if (gold != 3) {
+            throw new AssertionError("Expected 3 gold ingots in the stash, found " + gold);
+        }
+
+        server.runCommand("gamemode spectator @p");
+        server.runCommand("tp @p " + (nest.getX() + 3.5) + " " + (nest.getY() + 2.5) + " " + (nest.getZ() + 3.5) + " facing "
+            + (nest.getX() + 0.5) + " " + nest.getY() + " " + (nest.getZ() + 0.5));
+        context.waitTicks(10);
+        context.takeScreenshot("stash_nest");
+    }
+
     private static void waitUntil(ClientGameTestContext context, TestServerContext server, String what, int timeout, java.util.function.Predicate<MinecraftServer> condition) {
         for (int tick = 0; tick < timeout; tick++) {
             if (server.computeOnServer(condition::test)) {
@@ -421,7 +569,7 @@ public class MonkeyShowcaseClientGameTest implements FabricClientGameTest {
 
     private static List<MonkeyEntity> monkeys(MinecraftServer server) {
         return server.overworld()
-            .getEntitiesOfClass(MonkeyEntity.class, new AABB(-20, -70, -20, 20, -40, 20))
+            .getEntitiesOfClass(MonkeyEntity.class, new AABB(-48, -70, -48, 48, -40, 48))
             .stream()
             .sorted(Comparator.comparingDouble(MonkeyEntity::getX))
             .toList();

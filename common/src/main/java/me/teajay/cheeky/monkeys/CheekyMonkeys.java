@@ -1,5 +1,6 @@
 package me.teajay.cheeky.monkeys;
 
+import me.teajay.cheeky.monkeys.registry.ModBlockEntities;
 import me.teajay.cheeky.monkeys.registry.ModBlocks;
 import me.teajay.cheeky.monkeys.registry.ModEntities;
 import me.teajay.cheeky.monkeys.registry.ModItems;
@@ -24,6 +25,7 @@ public final class CheekyMonkeys {
     public static void init() {
         ModSounds.init();
         ModBlocks.init();
+        ModBlockEntities.init();
         ModEntities.init();
         ModItems.init();
         ModFeatures.init();

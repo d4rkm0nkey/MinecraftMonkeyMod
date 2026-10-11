@@ -9,10 +9,15 @@ Monkeys and bananas for your jungles, on Fabric and NeoForge.
 - **Monkeys** live in troops in jungle biomes. They chatter, pound their chests, scratch their heads, rub their bellies and look around.
 - **Bananas** hang from jungle trunks just below the canopy and ripen in three stages. You can eat them, or plant them on a jungle log like cocoa beans.
 - **Taming:** feed a wild monkey bananas until it trusts you. Bananas also make monkeys fall in love, so wild troops can be bred.
-- **Pets:** tamed monkeys follow you and sit on command. They eat from your hand, cheer when tamed and dance next to a playing jukebox.
+- **Pets:** tamed monkeys eat from your hand, cheer when tamed and dance next to a playing jukebox. Right-click a pet to switch what it does:
+  - **Follow:** stays with you, keeps a lookout (screeches and makes monsters coming for you glow) and snatches weapons out of monsters' hands to bring to you
+  - **Stay:** sits where it is
+  - **Wander:** roams and climbs around the spot you left it at
+  - **Gather:** follows you and fetches items lying around (drops from mining, mobs or explosions) into your inventory
+- **Shoulder rides:** sneak and right-click your monkey with an empty hand to carry it on your shoulder. Sneak again to let it down.
 - **Up in the trees:** monkeys climb up trunks, swing hand over hand along under the canopy, climb up the side of the leaves and sit on top. They leap from tree to tree, hang from the leaves and climb or jump back down. A hurt monkey flees up the nearest tree, and if you stand in a tree holding a banana, monkeys climb up to you.
 - **Banana thieves:** throw a banana and the monkeys race for it, grab it and run off to eat it in peace.
-- **Pickpockets:** wild monkeys sneak up behind you and steal from your pockets, then run up a tree with the loot. Catch them looking and they pretend nothing happened. To get your things back, give the thief a smack or offer it a banana; a monkey always drops what it stole when it dies.
+- **Pickpockets:** wild monkeys sneak up behind you and steal from your pockets, then run up a tree and hide the loot in a **stash nest**. Find the nest and you can open it and take everything back. Catch them looking and they pretend nothing happened. To get your things back, give the thief a smack or offer it a banana; a monkey always drops what it stole when it dies.
 - **Troops:** wild monkeys stick together, and when one gets hurt it screeches and the whole troop scatters up the trees.
 - **Leaping:** monkeys jump over gaps they can't walk around, and sometimes take a big leap forward just for fun.
 - Monkeys are built for falling out of trees, so they take only a little fall damage.

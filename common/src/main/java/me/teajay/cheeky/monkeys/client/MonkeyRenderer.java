@@ -9,10 +9,14 @@ import com.geckolib.renderer.layer.builtin.ItemInHandGeoLayer;
 import me.teajay.cheeky.monkeys.CheekyMonkeys;
 import me.teajay.cheeky.monkeys.entity.MonkeyEntity;
 import me.teajay.cheeky.monkeys.entity.MonkeyState;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.core.Direction;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 public class MonkeyRenderer extends GeoEntityRenderer<MonkeyEntity, LivingEntityRenderState> {
@@ -32,6 +36,18 @@ public class MonkeyRenderer extends GeoEntityRenderer<MonkeyEntity, LivingEntity
         renderState.addGeckolibData(MonkeyEntity.STATE_TICKET, monkey.getState());
         renderState.addGeckolibData(MonkeyEntity.MOVE_SPEED_TICKET, renderState.walkAnimationSpeed);
 
+        // On a shoulder, stick to the owner's shoulder as they're drawn this frame, rather than trailing behind where the server last put it
+        Player shoulderOwner = monkey.getShoulderOwner();
+        if (shoulderOwner != null) {
+            float bodyYaw = Mth.rotLerp(partialTick, shoulderOwner.yBodyRotO, shoulderOwner.yBodyRot);
+            Vec3 pos = MonkeyEntity.shoulderPosition(shoulderOwner, shoulderOwner.getPosition(partialTick), bodyYaw);
+            renderState.x = pos.x;
+            renderState.y = pos.y;
+            renderState.z = pos.z;
+            renderState.bodyRot = bodyYaw;
+            renderState.addGeckolibData(DataTickets.ENTITY_BODY_YAW, bodyYaw);
+        }
+
         // Climbing monkeys always face what they're climbing, whichever way they're headed
         if (monkey.getState() == MonkeyState.CLIMBING) {
             Direction face = monkey.getClimbedFace();
@@ -42,6 +58,17 @@ public class MonkeyRenderer extends GeoEntityRenderer<MonkeyEntity, LivingEntity
                 renderState.addGeckolibData(DataTickets.ENTITY_YAW, 0.0F);
             }
         }
+    }
+
+    /// A monkey on your own shoulder would only block the view in first person
+    @Override
+    public boolean shouldRender(MonkeyEntity monkey, Frustum culler, double camX, double camY, double camZ, float partialTicks) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (monkey.getShoulderOwner() != null && monkey.getShoulderOwner() == minecraft.getCameraEntity() && minecraft.options.getCameraType().isFirstPerson()) {
+            return false;
+        }
+
+        return super.shouldRender(monkey, culler, camX, camY, camZ, partialTicks);
     }
 
     @Override

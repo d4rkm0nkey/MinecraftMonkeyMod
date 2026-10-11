@@ -10,5 +10,12 @@
   "subtitles.cheeky_monkeys.entity.monkey.happy": "Affe jubelt",
   "subtitles.cheeky_monkeys.entity.monkey.chest_pound": "Affe trommelt auf die Brust",
   "tag.item.cheeky_monkeys.monkey_food": "Affenfutter",
-  "message.cheeky_monkeys.stolen": "Ein Affe hat dir %s geklaut!"
+  "message.cheeky_monkeys.stolen": "Ein Affe hat dir %s geklaut!",
+  "block.cheeky_monkeys.monkey_stash": "Affenversteck",
+  "container.cheeky_monkeys.monkey_stash": "Affenversteck",
+  "message.cheeky_monkeys.mode.follow": "%s folgt dir",
+  "message.cheeky_monkeys.mode.stay": "%s bleibt hier",
+  "message.cheeky_monkeys.mode.wander": "%s streift hier herum",
+  "message.cheeky_monkeys.mode.gather": "%s sammelt Gegenstände für dich",
+  "message.cheeky_monkeys.shoulder": "%s ist auf deine Schulter gesprungen. Schleiche, um ihn abzusetzen"
 }
